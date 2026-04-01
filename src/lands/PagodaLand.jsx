@@ -3,9 +3,9 @@ import { useGLTF } from "@react-three/drei"
 import { useRef, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 
-export default function RuinLand() {
+export default function PagodaLand() {
     const base = import.meta.env.BASE_URL
-    const { scene } = useGLTF(`${base}models/Ruin.glb`)
+    const { scene } = useGLTF(`${base}models/Pagoda.glb`)
 
     const rotationGroup = useRef()
     const isDragging = useRef(false)
@@ -16,22 +16,9 @@ export default function RuinLand() {
         const cloned = scene.clone(true)
         const box = new THREE.Box3().setFromObject(cloned)
         const center = new THREE.Vector3()
-        const size = new THREE.Vector3()
         box.getCenter(center)
-        box.getSize(size)
-        console.log("RuinLand size:", size)
-
         const pivot = new THREE.Group()
         cloned.position.set(-center.x, -center.y, -center.z)
-
-        // Darken all materials
-        cloned.traverse((child) => {
-            if (child.isMesh && child.material) {
-                child.material = child.material.clone()
-                child.material.color.multiplyScalar(0.35) // 0.35 = quite dark, try 0.2 for darker
-            }
-        })
-
         pivot.add(cloned)
         return pivot
     }, [scene])
@@ -47,20 +34,17 @@ export default function RuinLand() {
         <group
             ref={rotationGroup}
             position={[0, 1.5, 0]}
-            onPointerDown={(e) => {
-                isDragging.current = true
-                previousX.current = e.clientX
-            }}
-            onPointerUp={() => { isDragging.current = false }}
-            onPointerLeave={() => { isDragging.current = false }}
+            onPointerDown={(e) => { e.stopPropagation(); isDragging.current = true; previousX.current = e.clientX }}
+            onPointerUp={(e) => { e.stopPropagation(); isDragging.current = false }}
+            onPointerLeave={(e) => { e.stopPropagation(); isDragging.current = false }}
             onPointerMove={(e) => {
+                e.stopPropagation()
                 if (!isDragging.current) return
-                const delta = e.clientX - previousX.current
-                rotationVelocity.current = delta * 0.0012
+                rotationVelocity.current = (e.clientX - previousX.current) * 0.0012
                 previousX.current = e.clientX
             }}
         >
-            <primitive object={model} scale={3} />
+            <primitive object={model} scale={0.45   } />
         </group>
     )
 }

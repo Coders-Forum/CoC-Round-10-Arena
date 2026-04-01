@@ -4,7 +4,8 @@ import { useRef, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 
 export default function PyramidLand() {
-    const { scene } = useGLTF("/models/Pyramid.glb")
+    const base = import.meta.env.BASE_URL
+    const { scene } = useGLTF(`${base}models/Pyramid.glb`)
 
     const rotationGroup = useRef()
     const isDragging = useRef(false)

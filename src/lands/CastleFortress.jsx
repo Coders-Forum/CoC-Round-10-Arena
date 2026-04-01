@@ -4,7 +4,8 @@ import { useRef, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 
 export default function CastleFortress() {
-    const { scene } = useGLTF("/models/Castle Fortress.glb")
+    const base = import.meta.env.BASE_URL
+    const { scene } = useGLTF(`${base}models/Castle Fortress.glb`)
 
     const rotationGroup = useRef()
     const isDragging = useRef(false)

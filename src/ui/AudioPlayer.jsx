@@ -37,7 +37,7 @@ export default function AudioPlayer() {
 
     return (
         <>
-            <audio ref={audioRef} src="/audio/battle.mp3" />
+            <audio ref={audioRef} src={`${import.meta.env.BASE_URL}audio/battle.mp3`} />
             <button
                 onClick={toggleMute}
                 style={{

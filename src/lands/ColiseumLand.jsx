@@ -4,7 +4,8 @@ import { useRef, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 
 export default function ColiseumLand() {
-    const { scene } = useGLTF("/models/Coliseum.glb")
+    const base = import.meta.env.BASE_URL
+    const { scene } = useGLTF(`${base}models/Coliseum.glb`)
 
     const rotationGroup = useRef()
     const isDragging = useRef(false)

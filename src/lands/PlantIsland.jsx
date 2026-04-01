@@ -4,7 +4,8 @@ import { useRef, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 
 export default function PlantIsland() {
-    const { scene } = useGLTF("/models/plant_island.glb")
+    const base = import.meta.env.BASE_URL
+    const { scene } = useGLTF(`${base}models/plant_island.glb`)
 
     const rotationGroup = useRef()
     const isDragging = useRef(false)

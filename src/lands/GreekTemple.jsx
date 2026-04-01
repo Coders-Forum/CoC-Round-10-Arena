@@ -4,7 +4,8 @@ import { useRef, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 
 export default function GreekTemple() {
-    const { scene } = useGLTF("/models/Greek Temple.glb")
+    const base = import.meta.env.BASE_URL
+    const { scene } = useGLTF(`${base}models/Greek Temple.glb`)
 
     const rotationGroup = useRef()
     const isDragging = useRef(false)

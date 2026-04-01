@@ -6,7 +6,8 @@ import FloatingRocks from "../scene/FloatingRocks.jsx"
 import Embers from "../scene/Embers.jsx"
 
 export default function VolcanoLand() {
-    const { scene } = useGLTF("/models/volcano.glb")
+    const base = import.meta.env.BASE_URL
+    const { scene } = useGLTF(`${base}models/volcano.glb`)
 
     const rotationGroup = useRef()
     const isDragging = useRef(false)

@@ -5,7 +5,8 @@ import { useFrame } from "@react-three/fiber"
 import Snowflakes from "../scene/Snowflakes.jsx"
 
 export default function SnowLand() {
-    const { scene } = useGLTF("/models/snow_mountain.glb")
+    const base = import.meta.env.BASE_URL
+    const { scene } = useGLTF(`${base}models/snow_mountain.glb`)
 
     const rotationGroup = useRef()
     const isDragging = useRef(false)
