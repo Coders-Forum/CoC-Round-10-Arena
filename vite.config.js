@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Netlify serves from root '/' — no subpath needed
 export default defineConfig({
-  base: process.env.NODE_ENV === 'production' ? '/Game_Contest/' : '/',
+  base: '/',
   plugins: [react()],
 })
