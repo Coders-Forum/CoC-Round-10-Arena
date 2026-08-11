@@ -1,34 +1,39 @@
 import { useRef, useState, useEffect } from "react"
 import { Canvas } from "@react-three/fiber"
 
-export default function LazyCanvas({ children, style, camera, ...props }) {
+export default function LazyCanvas({ children, style, camera, forceVisible = false, ...props }) {
     const containerRef = useRef()
-    const [visible, setVisible] = useState(false)
+    const [visible, setVisible] = useState(forceVisible)
 
     useEffect(() => {
+        if (forceVisible) {
+            setVisible(true)
+            return
+        }
         const observer = new IntersectionObserver(
             ([entry]) => {
-                // Toggle visibility based on viewport intersection
-                // Unmounting when offscreen releases WebGL context to prevent browser context loss
                 setVisible(entry.isIntersecting)
             },
-            { rootMargin: "600px" } // Load 600px before entering viewport for seamless scrolling
+            { rootMargin: "600px" }
         )
 
         if (containerRef.current) observer.observe(containerRef.current)
         return () => observer.disconnect()
-    }, [])
+    }, [forceVisible])
+
+    const isMounted = forceVisible || visible
 
     return (
         <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
-            {visible && (
+            {isMounted && (
                 <Canvas
                     camera={camera}
                     dpr={[1, 1]}
                     gl={{
                         antialias: false,
-                        powerPreference: "high-performance",
-                        alpha: true
+                        powerPreference: "default",
+                        alpha: true,
+                        failIfMajorPerformanceCaveat: false
                     }}
                     style={{ background: "transparent" }}
                     {...props}

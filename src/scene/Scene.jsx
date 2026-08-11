@@ -1,4 +1,4 @@
-import { Suspense } from "react"
+import { Suspense, useState, useEffect, useRef } from "react"
 import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
@@ -29,37 +29,32 @@ import CemeteryLand from "../lands/CemeteryLand.jsx"
 import NecroLand from "../lands/NecroLand.jsx"
 import PillarsLand from "../lands/PillarsLand.jsx"
 
-// Preload all GLB models immediately on page load into memory cache
+// Staggered model preloading to avoid network congestion for 1000+ concurrent users
 const base = import.meta.env.BASE_URL
-const modelsToPreload = [
-    "volcano.glb",
-    "snow_mountain.glb",
-    "plant_island.glb",
-    "Island.glb",
-    "Coliseum.glb",
-    "Pyramid.glb",
-    "Castle Fortress.glb",
-    "Ruin.glb",
-    "Mayan Temple.glb",
-    "Greek Temple.glb",
-    "Pagoda.glb",
-    "Pedestal.glb",
-    "Cathedral.glb",
-    "Japanese Torii.glb",
-    "Castle (1).glb",
-    "Pagoda(2).glb",
-    "Barracks.glb",
-    "Palace.glb",
-    "Torii Gate.glb",
-    "Mystic Tree.glb",
-    "Dead Trees With Snow.glb",
-    "Temple.glb",
-    "Archway.glb",
-    "Necropolis walls V2.glb",
-    "Cemetery scene.glb",
-    "Column.glb"
-]
-modelsToPreload.forEach((m) => useGLTF.preload(`${base}models/${m}`))
+const initialModels = ["volcano.glb", "snow_mountain.glb", "plant_island.glb", "Island.glb"]
+initialModels.forEach((m) => useGLTF.preload(`${base}models/${m}`))
+
+if (typeof window !== "undefined") {
+    const remainingModels = [
+        "Coliseum.glb", "Pyramid.glb", "Castle Fortress.glb", "Ruin.glb", "Mayan Temple.glb",
+        "Greek Temple.glb", "Pagoda.glb", "Pedestal.glb", "Cathedral.glb", "Japanese Torii.glb",
+        "Castle (1).glb", "Pagoda(2).glb", "Barracks.glb", "Palace.glb", "Torii Gate.glb",
+        "Mystic Tree.glb", "Dead Trees With Snow.glb", "Temple.glb", "Archway.glb",
+        "Necropolis walls V2.glb", "Cemetery scene.glb", "Column.glb"
+    ]
+    const schedulePreload = () => {
+        remainingModels.forEach((m, idx) => {
+            setTimeout(() => {
+                useGLTF.preload(`${base}models/${m}`)
+            }, idx * 120)
+        })
+    }
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(schedulePreload)
+    } else {
+        setTimeout(schedulePreload, 800)
+    }
+}
 
 const cards = {
     volcano: {
@@ -264,16 +259,43 @@ const cards = {
     },
 }
 
+const ARENAS_LIST = [
+    { id: "volcano", LandComponent: VolcanoLand, card: cards.volcano, btnText: "Enter Volcano Arena", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[10, 15, 10]} intensity={1.5} /><directionalLight position={[-10, 5, -10]} intensity={0.6} /><pointLight position={[0, 22, 0]} intensity={5} color="#ff4500" distance={40} /></>) },
+    { id: "snow", LandComponent: SnowLand, card: cards.snow, btnText: "Enter Frozen Peaks", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[20, 15, 5]} intensity={1.8} color="#cce8ff" /><directionalLight position={[-10, 10, -10]} intensity={0.5} color="#99ccff" /><pointLight position={[0, -3, 0]} intensity={1.5} color="#ddeeff" distance={30} /><pointLight position={[0, 10, -15]} intensity={1.2} color="#aabbdd" distance={40} /></>) },
+    { id: "plant", LandComponent: PlantIsland, card: cards.plant, btnText: "Enter Jungle Isle", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#aaff66" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#114400" /><pointLight position={[0, -2, 0]} intensity={1.5} color="#22aa00" distance={30} /><pointLight position={[5, 10, 5]} intensity={2} color="#aaff44" distance={35} /></>) },
+    { id: "island", LandComponent: IslandLand, card: cards.island, btnText: "Enter Island Shores", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[15, 30, 10]} intensity={2.2} color="#fff5cc" /><directionalLight position={[-10, 10, -10]} intensity={0.4} color="#aaddff" /><pointLight position={[0, -3, 0]} intensity={2} color="#00ccff" distance={35} /><pointLight position={[-10, 8, -10]} intensity={1.5} color="#ffaa33" distance={40} /></>) },
+    { id: "coliseum", LandComponent: ColiseumLand, card: cards.coliseum, btnText: "Enter The Coliseum", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[25, 20, 5]} intensity={2.0} color="#ddeeff" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#aabbcc" /><pointLight position={[0, 15, -10]} intensity={2} color="#c0d0ff" distance={40} /><pointLight position={[0, -2, 0]} intensity={0.8} color="#886633" distance={25} /></>) },
+    { id: "pyramid", LandComponent: PyramidLand, card: cards.pyramid, btnText: "Enter Desert Pyramid", lights: () => (<><ambientLight intensity={0.3} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffcc77" /><directionalLight position={[-10, 5, -10]} intensity={0.2} color="#331a00" /><pointLight position={[0, -5, 0]} intensity={1.5} color="#ff8800" distance={40} /><pointLight position={[0, 10, -15]} intensity={2} color="#ffaa00" distance={50} /></>) },
+    { id: "castle", LandComponent: CastleFortress, card: cards.castle, btnText: "Enter Castle Fortress", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 25, 15]} intensity={1.3} /><directionalLight position={[-10, 10, -10]} intensity={0.5} /></>) },
+    { id: "ruin", LandComponent: RuinLand, card: cards.ruin, btnText: "Enter Ancient Ruins", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 25, 15]} intensity={1.3} /><directionalLight position={[-10, 10, -10]} intensity={0.5} /></>) },
+    { id: "mayan", LandComponent: MayanTemple, card: cards.mayan, btnText: "Enter Mayan Temple", lights: () => (<><ambientLight intensity={0.35} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ccccbb" /><directionalLight position={[-10, 5, -10]} intensity={0.25} color="#223300" /><pointLight position={[0, -2, 0]} intensity={1.5} color="#554433" distance={30} /><pointLight position={[0, 8, 5]} intensity={2} color="#ff8800" distance={35} /></>) },
+    { id: "greek", LandComponent: GreekTemple, card: cards.greek, btnText: "Enter Greek Temple", lights: () => (<><ambientLight intensity={0.7} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.6} color="#cce0ff" /><pointLight position={[0, -3, 0]} intensity={1.8} color="#fff8ee" distance={35} /><pointLight position={[0, 20, -12]} intensity={2.2} color="#ffe8aa" distance={50} /></>) },
+    { id: "pagoda", LandComponent: PagodaLand, card: cards.pagoda, btnText: "Enter Pagoda Tower", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} /><pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} /></>) },
+    { id: "pedestal", LandComponent: PedestalLand, card: cards.pedestal, btnText: "Enter Stone Pedestal", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={1.8} color="#ddeeff" /><directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" /><pointLight position={[0, -3, 0]} intensity={1.5} color="#ccddee" distance={35} /><pointLight position={[0, 15, -10]} intensity={1.8} color="#eef0ff" distance={45} /></>) },
+    { id: "cathedral", LandComponent: CathedralLand, card: cards.cathedral, btnText: "Enter Santorini", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 30, 10]} intensity={2.2} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#aaccff" /><pointLight position={[0, 10, 0]} intensity={2} color="#ddeeff" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.5} color="#ffffff" distance={35} /></>) },
+    { id: "torii", LandComponent: ToriiLand, card: cards.torii, btnText: "Enter Torii Gate", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} /><pointLight position={[0, 12, -8]} intensity={2} color="#ff8800" distance={40} /></>) },
+    { id: "castle2", LandComponent: Castle2Land, card: cards.castle2, btnText: "Enter Rock Fort", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={2.0} color="#ddeeff" /><directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" /><pointLight position={[0, 10, 0]} intensity={2} color="#bbccee" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.2} color="#99aabb" distance={30} /></>) },
+    { id: "pagoda2", LandComponent: Pagoda2Land, card: cards.pagoda2, btnText: "Enter Jade Pagoda", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#aaffaa" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#113300" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff5500" distance={35} /><pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} /></>) },
+    { id: "barracks", LandComponent: BarracksLand, card: cards.barracks, btnText: "Enter Barracks", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ddbb88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" /><pointLight position={[0, 5, 0]} intensity={2} color="#cc8833" distance={35} /><pointLight position={[0, 12, -8]} intensity={1.5} color="#ffaa44" distance={40} /></>) },
+    { id: "palace", LandComponent: PalaceLand, card: cards.palace, btnText: "Enter The Palace", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffeeaa" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#bbaa44" /><pointLight position={[0, 5, 0]} intensity={3} color="#ffdd44" distance={40} /><pointLight position={[0, 20, -10]} intensity={2} color="#ffcc00" distance={50} /></>) },
+    { id: "shrine", LandComponent: JapaneseShrine, card: cards.shrine, btnText: "Enter Japanese Shrine", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" /><pointLight position={[0, 5, 0]} intensity={2.5} color="#ff5500" distance={35} /><pointLight position={[0, 12, 5]} intensity={1.8} color="#ffaa44" distance={40} /></>) },
+    { id: "deadforest", LandComponent: DeadForest, card: cards.deadforest, btnText: "Enter Dead Winter Forest", lights: () => (<><ambientLight intensity={1.2} /><directionalLight position={[20, 30, 10]} intensity={3.0} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={1.5} color="#eef5ff" /><directionalLight position={[0, -10, 15]} intensity={1.0} color="#cce0ff" /><pointLight position={[0, 10, 5]} intensity={4} color="#ffffff" distance={50} /></>) },
+    { id: "temple", LandComponent: TempleLand, card: cards.temple, btnText: "Enter Saint Basil's", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffeeaa" /><directionalLight position={[-10, 10, -10]} intensity={0.4} color="#ffcc66" /><pointLight position={[0, 10, 0]} intensity={2.5} color="#ffdd44" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.2} color="#ff8800" distance={25} /></>) },
+    { id: "archway", LandComponent: ArchwayLand, card: cards.archway, btnText: "Enter Arc de Triomphe", lights: () => (<><ambientLight intensity={0.7} /><directionalLight position={[20, 30, 10]} intensity={2.2} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#ddeeff" /><pointLight position={[0, 5, 0]} intensity={2} color="#ffffff" distance={35} /><pointLight position={[0, 15, -8]} intensity={1.5} color="#eeeeff" distance={40} /></>) },
+    { id: "necro", LandComponent: NecroLand, card: cards.necro, btnText: "Enter Necropolis", lights: () => (<><ambientLight intensity={0.3} /><directionalLight position={[15, 25, 10]} intensity={1.5} color="#ffeeaa" /><directionalLight position={[-10, 5, -10]} intensity={0.2} color="#332200" /></>) },
+    { id: "cemetery", LandComponent: CemeteryLand, card: cards.cemetery, btnText: "Enter Cemetery", lights: () => (<><ambientLight intensity={0.9} /><directionalLight position={[8, 15, 8]} intensity={0.8} color="#99aabb" /><directionalLight position={[-8, 10, -8]} intensity={0.5} color="#667788" /></>) },
+    { id: "pillars", LandComponent: PillarsLand, card: cards.pillars, btnText: "Enter Pillars of Eternity", lights: () => (<><ambientLight intensity={1.2} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffffff" /><directionalLight position={[-10, 10, -10]} intensity={1.0} color="#aaccff" /><pointLight position={[0, 5, 0]} intensity={3} color="#44aaff" distance={30} /></>) },
+]
+
 const cardBox = (top, left) => ({
     position: "absolute",
     top,
     left,
     display: "flex",
-    alignItems: "flex-end",  // ← was "center", now bottom-aligned
+    alignItems: "flex-end",
     zIndex: 5,
     pointerEvents: "none"
 })
-
 
 const btnStyle = {
     background: "rgba(0,0,0,0.75)",
@@ -309,6 +331,19 @@ const btnBox = (top, left) => ({
 })
 
 export default function Scene() {
+    const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth < 768)
+    const [activeIdx, setActiveIdx] = useState(0)
+
+    const touchStartX = useRef(0)
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768)
+        }
+        window.addEventListener("resize", handleResize)
+        return () => window.removeEventListener("resize", handleResize)
+    }, [])
+
     const cameraConfig = {
         position: [25, 20, 25],
         fov: 35,
@@ -316,12 +351,145 @@ export default function Scene() {
         far: 2000
     }
 
-    const canvasProps = {
-        dpr: [1, 1],  // ← was [1, 1.5], reduces GPU load
-        gl: { antialias: false, powerPreference: "high-performance", alpha: true },  // ← antialias off = big perf gain
-        style: { background: "transparent" }
+    const currentArena = ARENAS_LIST[activeIdx]
+    const CurrentLand = currentArena.LandComponent
+
+    const handlePrev = () => {
+        setActiveIdx((prev) => (prev > 0 ? prev - 1 : ARENAS_LIST.length - 1))
     }
 
+    const handleNext = () => {
+        setActiveIdx((prev) => (prev < ARENAS_LIST.length - 1 ? prev + 1 : 0))
+    }
+
+    const handleTouchStart = (e) => {
+        touchStartX.current = e.touches[0].clientX
+    }
+
+    const handleTouchEnd = (e) => {
+        const touchEndX = e.changedTouches[0].clientX
+        const diff = touchStartX.current - touchEndX
+        if (Math.abs(diff) > 40) {
+            if (diff > 0) handleNext()
+            else handlePrev()
+        }
+    }
+
+    if (isMobile) {
+        return (
+            <>
+                <AudioPlayer />
+                <div
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    style={{
+                        minHeight: "100vh",
+                        width: "100vw",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "16px 12px 32px 12px",
+                        boxSizing: "border-box",
+                        background: "radial-gradient(circle at 50% 30%, #1a1200 0%, #080808 80%)",
+                        overflowX: "hidden"
+                    }}
+                >
+                    {/* Header Banner */}
+                    <div style={{ textAlign: "center", marginTop: "8px" }}>
+                        <div style={{ color: "#c47d00", fontFamily: "'Georgia', serif", fontSize: "11px", letterSpacing: "3px", textTransform: "uppercase" }}>
+                            Clash of Coders — 3D Showcase
+                        </div>
+                        <div style={{ color: "#ffe066", fontFamily: "'Georgia', serif", fontSize: "20px", fontWeight: "bold", letterSpacing: "1px", textShadow: "0 0 12px #c47d00aa" }}>
+                            BATTLE ARENAS
+                        </div>
+                    </div>
+
+                    {/* Navigation Carousel Bar */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", maxWidth: "360px", margin: "12px 0" }}>
+                        <button
+                            onClick={handlePrev}
+                            style={{
+                                background: "rgba(0,0,0,0.8)",
+                                border: "1px solid #c47d00",
+                                color: "#ffe066",
+                                borderRadius: "20px",
+                                padding: "8px 16px",
+                                fontSize: "12px",
+                                fontWeight: "bold",
+                                cursor: "pointer",
+                                backdropFilter: "blur(6px)"
+                            }}
+                        >
+                            ❮ PREV
+                        </button>
+
+                        <div style={{ color: "#ffffff", fontFamily: "'Georgia', serif", fontSize: "13px", fontWeight: "bold", letterSpacing: "1px" }}>
+                            {activeIdx + 1} / {ARENAS_LIST.length}
+                        </div>
+
+                        <button
+                            onClick={handleNext}
+                            style={{
+                                background: "rgba(0,0,0,0.8)",
+                                border: "1px solid #c47d00",
+                                color: "#ffe066",
+                                borderRadius: "20px",
+                                padding: "8px 16px",
+                                fontSize: "12px",
+                                fontWeight: "bold",
+                                cursor: "pointer",
+                                backdropFilter: "blur(6px)"
+                            }}
+                        >
+                            NEXT ❯
+                        </button>
+                    </div>
+
+                    {/* 3D Model Display */}
+                    <div style={{ width: "290px", height: "290px", position: "relative", margin: "0 auto" }}>
+                        <LazyCanvas camera={cameraConfig} forceVisible={true}>
+                            {currentArena.lights()}
+                            <Suspense fallback={null}>
+                                <CurrentLand key={currentArena.id} />
+                            </Suspense>
+                        </LazyCanvas>
+                    </div>
+
+                    {/* Arena Info Card */}
+                    <div style={{ width: "100%", maxWidth: "340px", marginTop: "12px" }}>
+                        <ArenaCard side="left" {...currentArena.card} />
+                    </div>
+
+                    {/* CTA Button */}
+                    <div style={{ marginTop: "16px" }}>
+                        <button style={btnStyle}>{currentArena.btnText}</button>
+                    </div>
+
+                    {/* Quick Arena Pills */}
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "center", maxWidth: "340px", marginTop: "16px" }}>
+                        {ARENAS_LIST.map((a, i) => (
+                            <div
+                                key={a.id}
+                                onClick={() => setActiveIdx(i)}
+                                style={{
+                                    width: i === activeIdx ? "20px" : "8px",
+                                    height: "8px",
+                                    borderRadius: "4px",
+                                    background: i === activeIdx ? "#ffe066" : "rgba(255,255,255,0.2)",
+                                    boxShadow: i === activeIdx ? "0 0 8px #ffe066" : "none",
+                                    transition: "all 0.3s",
+                                    cursor: "pointer"
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </>
+        )
+    }
+
+    // Desktop View
     return (
         <>
             <AudioPlayer />
@@ -332,10 +500,7 @@ export default function Scene() {
                 position: "relative",
                 background: "transparent"
             }}>
-
                 {/* ── SCREEN 1 ── */}
-
-                {/* VOLCANO — top left */}
                 <div style={canvasBox("20px", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.6} />
@@ -345,7 +510,6 @@ export default function Scene() {
                         <Suspense fallback={null}><VolcanoLand /></Suspense>
                     </LazyCanvas>
                 </div>
-                {/* Volcano card — right of model, left-aligned */}
                 <div style={cardBox("140px", "450px")}>
                     <ArenaCard side="left" {...cards.volcano} />
                 </div>
@@ -353,7 +517,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Volcano Arena</button>
                 </div>
 
-                {/* SNOW — bottom right */}
                 <div style={canvasBox("calc(100vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.5} />
@@ -364,7 +527,6 @@ export default function Scene() {
                         <Suspense fallback={null}><SnowLand /></Suspense>
                     </LazyCanvas>
                 </div>
-                {/* Snow card — left of model, right-aligned */}
                 <div style={cardBox("calc(100vh - 300px)", "calc(100vw - 790px)")}>
                     <ArenaCard side="right" {...cards.snow} />
                 </div>
@@ -373,8 +535,6 @@ export default function Scene() {
                 </div>
 
                 {/* ── SCREEN 2 ── */}
-
-                {/* PLANT ISLAND — top left */}
                 <div style={canvasBox("calc(100vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.5} />
@@ -382,7 +542,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#114400" />
                         <pointLight position={[0, -2, 0]} intensity={1.5} color="#22aa00" distance={30} />
                         <pointLight position={[5, 10, 5]} intensity={2} color="#aaff44" distance={35} />
-                        <PlantIsland />
+                        <Suspense fallback={null}><PlantIsland /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(100vh + 140px)", "450px")}>
@@ -392,7 +552,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Jungle Isle</button>
                 </div>
 
-                {/* ISLAND — bottom right */}
                 <div style={canvasBox("calc(200vh - 500px)", "calc(100vw - 520px)", "500px", "500px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.6} />
@@ -400,7 +559,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 10, -10]} intensity={0.4} color="#aaddff" />
                         <pointLight position={[0, -3, 0]} intensity={2} color="#00ccff" distance={35} />
                         <pointLight position={[-10, 8, -10]} intensity={1.5} color="#ffaa33" distance={40} />
-                        <IslandLand />
+                        <Suspense fallback={null}><IslandLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(200vh - 300px)", "calc(100vw - 870px)")}>
@@ -411,8 +570,6 @@ export default function Scene() {
                 </div>
 
                 {/* ── SCREEN 3 ── */}
-
-                {/* COLISEUM — top left */}
                 <div style={canvasBox("calc(200vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.4} />
@@ -420,7 +577,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#aabbcc" />
                         <pointLight position={[0, 15, -10]} intensity={2} color="#c0d0ff" distance={40} />
                         <pointLight position={[0, -2, 0]} intensity={0.8} color="#886633" distance={25} />
-                        <ColiseumLand />
+                        <Suspense fallback={null}><ColiseumLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(200vh + 140px)", "450px")}>
@@ -430,7 +587,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter The Coliseum</button>
                 </div>
 
-                {/* PYRAMID — bottom right */}
                 <div style={canvasBox("calc(300vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.3} />
@@ -438,7 +594,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.2} color="#331a00" />
                         <pointLight position={[0, -5, 0]} intensity={1.5} color="#ff8800" distance={40} />
                         <pointLight position={[0, 10, -15]} intensity={2} color="#ffaa00" distance={50} />
-                        <PyramidLand />
+                        <Suspense fallback={null}><PyramidLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(300vh - 300px)", "calc(100vw - 790px)")}>
@@ -449,14 +605,12 @@ export default function Scene() {
                 </div>
 
                 {/* ── SCREEN 4 ── */}
-
-                {/* CASTLE FORTRESS — top left */}
                 <div style={canvasBox("calc(300vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.8} />
                         <directionalLight position={[15, 25, 15]} intensity={1.3} />
                         <directionalLight position={[-10, 10, -10]} intensity={0.5} />
-                        <CastleFortress />
+                        <Suspense fallback={null}><CastleFortress /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(300vh + 140px)", "450px")}>
@@ -466,13 +620,12 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Castle Fortress</button>
                 </div>
 
-                {/* RUIN — bottom right */}
                 <div style={canvasBox("calc(400vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.8} />
                         <directionalLight position={[15, 25, 15]} intensity={1.3} />
                         <directionalLight position={[-10, 10, -10]} intensity={0.5} />
-                        <RuinLand />
+                        <Suspense fallback={null}><RuinLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(400vh - 300px)", "calc(100vw - 790px)")}>
@@ -483,8 +636,6 @@ export default function Scene() {
                 </div>
 
                 {/* ── SCREEN 5 ── */}
-
-                {/* MAYAN TEMPLE — top left */}
                 <div style={canvasBox("calc(400vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.35} />
@@ -492,7 +643,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.25} color="#223300" />
                         <pointLight position={[0, -2, 0]} intensity={1.5} color="#554433" distance={30} />
                         <pointLight position={[0, 8, 5]} intensity={2} color="#ff8800" distance={35} />
-                        <MayanTemple />
+                        <Suspense fallback={null}><MayanTemple /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(400vh + 140px)", "450px")}>
@@ -502,7 +653,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Mayan Temple</button>
                 </div>
 
-                {/* GREEK TEMPLE — bottom right */}
                 <div style={canvasBox("calc(500vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.7} />
@@ -510,7 +660,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 15, -10]} intensity={0.6} color="#cce0ff" />
                         <pointLight position={[0, -3, 0]} intensity={1.8} color="#fff8ee" distance={35} />
                         <pointLight position={[0, 20, -12]} intensity={2.2} color="#ffe8aa" distance={50} />
-                        <GreekTemple />
+                        <Suspense fallback={null}><GreekTemple /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(500vh - 300px)", "calc(100vw - 790px)")}>
@@ -520,10 +670,7 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Greek Temple</button>
                 </div>
 
-
                 {/* ── SCREEN 6 ── */}
-
-                {/* PAGODA — top left */}
                 <div style={canvasBox("calc(500vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.4} />
@@ -531,7 +678,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" />
                         <pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} />
                         <pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} />
-                        <PagodaLand />
+                        <Suspense fallback={null}><PagodaLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(500vh + 140px)", "450px")}>
@@ -541,7 +688,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Pagoda Tower</button>
                 </div>
 
-                {/* PEDESTAL — bottom right */}
                 <div style={canvasBox("calc(600vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.6} />
@@ -549,7 +695,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" />
                         <pointLight position={[0, -3, 0]} intensity={1.5} color="#ccddee" distance={35} />
                         <pointLight position={[0, 15, -10]} intensity={1.8} color="#eef0ff" distance={45} />
-                        <PedestalLand />
+                        <Suspense fallback={null}><PedestalLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(600vh - 300px)", "calc(100vw - 790px)")}>
@@ -560,8 +706,6 @@ export default function Scene() {
                 </div>
 
                 {/* ── SCREEN 7 ── */}
-
-                {/* CATHEDRAL — top left */}
                 <div style={canvasBox("calc(600vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.8} />
@@ -569,7 +713,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 15, -10]} intensity={0.5} color="#aaccff" />
                         <pointLight position={[0, 10, 0]} intensity={2} color="#ddeeff" distance={40} />
                         <pointLight position={[0, -3, 5]} intensity={1.5} color="#ffffff" distance={35} />
-                        <CathedralLand />
+                        <Suspense fallback={null}><CathedralLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(600vh + 140px)", "450px")}>
@@ -579,7 +723,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Santorini</button>
                 </div>
 
-                {/* TORII — bottom right */}
                 <div style={canvasBox("calc(700vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.4} />
@@ -587,7 +730,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" />
                         <pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} />
                         <pointLight position={[0, 12, -8]} intensity={2} color="#ff8800" distance={40} />
-                        <ToriiLand />
+                        <Suspense fallback={null}><ToriiLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(700vh - 300px)", "calc(100vw - 790px)")}>
@@ -598,8 +741,6 @@ export default function Scene() {
                 </div>
 
                 {/* ── SCREEN 8 ── */}
-
-                {/* CASTLE(1) — top left */}
                 <div style={canvasBox("calc(700vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.6} />
@@ -607,7 +748,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" />
                         <pointLight position={[0, 10, 0]} intensity={2} color="#bbccee" distance={40} />
                         <pointLight position={[0, -3, 5]} intensity={1.2} color="#99aabb" distance={30} />
-                        <Castle2Land />
+                        <Suspense fallback={null}><Castle2Land /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(700vh + 140px)", "450px")}>
@@ -617,7 +758,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Rock Fort</button>
                 </div>
 
-                {/* PAGODA(2) — bottom right */}
                 <div style={canvasBox("calc(800vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.5} />
@@ -625,19 +765,17 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#113300" />
                         <pointLight position={[0, 5, 0]} intensity={3} color="#ff5500" distance={35} />
                         <pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} />
-                        <Pagoda2Land />
+                        <Suspense fallback={null}><Pagoda2Land /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(800vh - 300px)", "calc(100vw - 790px)")}>
                     <ArenaCard side="right" {...cards.pagoda2} />
                 </div>
-                <div style={btnBox("calc(800vh - 440px + 450px)", "calc(100vw - 440px)")}>
+                <div style={{ ...btnBox("calc(800vh - 440px + 430px)", "calc(100vw - 440px)") }}>
                     <button style={btnStyle}> Enter Jade Pagoda</button>
                 </div>
 
                 {/* ── SCREEN 9 ── */}
-
-                {/* BARRACKS — top left */}
                 <div style={canvasBox("calc(800vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.5} />
@@ -645,7 +783,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" />
                         <pointLight position={[0, 5, 0]} intensity={2} color="#cc8833" distance={35} />
                         <pointLight position={[0, 12, -8]} intensity={1.5} color="#ffaa44" distance={40} />
-                        <BarracksLand />
+                        <Suspense fallback={null}><BarracksLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(800vh + 140px)", "450px")}>
@@ -655,7 +793,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Barracks</button>
                 </div>
 
-                {/* PALACE — bottom right */}
                 <div style={canvasBox("calc(900vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.6} />
@@ -663,19 +800,17 @@ export default function Scene() {
                         <directionalLight position={[-10, 15, -10]} intensity={0.5} color="#bbaa44" />
                         <pointLight position={[0, 5, 0]} intensity={3} color="#ffdd44" distance={40} />
                         <pointLight position={[0, 20, -10]} intensity={2} color="#ffcc00" distance={50} />
-                        <PalaceLand />
+                        <Suspense fallback={null}><PalaceLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(900vh - 300px)", "calc(100vw - 790px)")}>
                     <ArenaCard side="right" {...cards.palace} />
                 </div>
-                <div style={btnBox("calc(900vh - 440px + 450px)", "calc(100vw - 440px)")}>
+                <div style={{ ...btnBox("calc(900vh - 440px + 450px)", "calc(100vw - 440px)") }}>
                     <button style={btnStyle}> Enter The Palace</button>
                 </div>
 
                 {/* ── SCREEN 10 ── */}
-
-                {/* JAPANESE SHRINE — top left */}
                 <div style={canvasBox("calc(900vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.5} />
@@ -683,7 +818,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" />
                         <pointLight position={[0, 5, 0]} intensity={2.5} color="#ff5500" distance={35} />
                         <pointLight position={[0, 12, 5]} intensity={1.8} color="#ffaa44" distance={40} />
-                        <JapaneseShrine />
+                        <Suspense fallback={null}><JapaneseShrine /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(900vh + 140px)", "450px")}>
@@ -693,7 +828,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Japanese Shrine</button>
                 </div>
 
-                {/* DEAD FOREST — bottom right */}
                 <div style={canvasBox("calc(1000vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={1.2} />
@@ -701,19 +835,17 @@ export default function Scene() {
                         <directionalLight position={[-10, 15, -10]} intensity={1.5} color="#eef5ff" />
                         <directionalLight position={[0, -10, 15]} intensity={1.0} color="#cce0ff" />
                         <pointLight position={[0, 10, 5]} intensity={4} color="#ffffff" distance={50} />
-                        <DeadForest />
+                        <Suspense fallback={null}><DeadForest /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(1000vh - 300px)", "calc(100vw - 790px)")}>
                     <ArenaCard side="right" {...cards.deadforest} />
                 </div>
-                <div style={btnBox("calc(1000vh - 440px + 450px)", "calc(100vw - 440px)")}>
+                <div style={{ ...btnBox("calc(1000vh - 440px + 450px)", "calc(100vw - 440px)") }}>
                     <button style={btnStyle}> Enter Dead Winter Forest</button>
                 </div>
 
                 {/* ── SCREEN 11 ── */}
-
-                {/* TEMPLE — top left */}
                 <div style={canvasBox("calc(1000vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.5} />
@@ -721,7 +853,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 10, -10]} intensity={0.4} color="#ffcc66" />
                         <pointLight position={[0, 10, 0]} intensity={2.5} color="#ffdd44" distance={40} />
                         <pointLight position={[0, -3, 5]} intensity={1.2} color="#ff8800" distance={25} />
-                        <TempleLand />
+                        <Suspense fallback={null}><TempleLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(1000vh + 140px)", "450px")}>
@@ -731,7 +863,6 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Saint Basil's</button>
                 </div>
 
-                {/* ARCHWAY — bottom right */}
                 <div style={canvasBox("calc(1100vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.7} />
@@ -739,25 +870,23 @@ export default function Scene() {
                         <directionalLight position={[-10, 15, -10]} intensity={0.5} color="#ddeeff" />
                         <pointLight position={[0, 5, 0]} intensity={2} color="#ffffff" distance={35} />
                         <pointLight position={[0, 15, -8]} intensity={1.5} color="#eeeeff" distance={40} />
-                        <ArchwayLand />
+                        <Suspense fallback={null}><ArchwayLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(1100vh - 300px)", "calc(100vw - 790px)")}>
                     <ArenaCard side="right" {...cards.archway} />
                 </div>
-                <div style={btnBox("calc(1100vh - 440px + 450px)", "calc(100vw - 440px)")}>
+                <div style={{ ...btnBox("calc(1100vh - 440px + 450px)", "calc(100vw - 440px)") }}>
                     <button style={btnStyle}> Enter Arc de Triomphe</button>
                 </div>
 
                 {/* ── SCREEN 12 ── */}
-
-                {/* NECROPOLIS — top left */}
                 <div style={canvasBox("calc(1100vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.3} />
                         <directionalLight position={[15, 25, 10]} intensity={1.5} color="#ffeeaa" />
                         <directionalLight position={[-10, 5, -10]} intensity={0.2} color="#332200" />
-                        <NecroLand />
+                        <Suspense fallback={null}><NecroLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(1100vh + 140px)", "450px")}>
@@ -767,32 +896,29 @@ export default function Scene() {
                     <button style={btnStyle}> Enter Necropolis</button>
                 </div>
 
-                {/* CEMETERY — bottom right */}
                 <div style={canvasBox("calc(1200vh - 440px)", "calc(100vw - 440px)")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={0.9} />
                         <directionalLight position={[8, 15, 8]} intensity={0.8} color="#99aabb" />
                         <directionalLight position={[-8, 10, -8]} intensity={0.5} color="#667788" />
-                        <CemeteryLand />
+                        <Suspense fallback={null}><CemeteryLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(1200vh - 300px)", "calc(100vw - 790px)")}>
                     <ArenaCard side="right" {...cards.cemetery} />
                 </div>
-                <div style={btnBox("calc(1200vh - 440px + 450px)", "calc(100vw - 440px)")}>
+                <div style={{ ...btnBox("calc(1200vh - 440px + 450px)", "calc(100vw - 440px)") }}>
                     <button style={btnStyle}> Enter Cemetery</button>
                 </div>
 
                 {/* ── SCREEN 13 ── */}
-
-                {/* PILLARS — top left */}
                 <div style={canvasBox("calc(1200vh + 20px)", "20px")}>
                     <LazyCanvas camera={cameraConfig}>
                         <ambientLight intensity={1.2} />
                         <directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffffff" />
                         <directionalLight position={[-10, 10, -10]} intensity={1.0} color="#aaccff" />
                         <pointLight position={[0, 5, 0]} intensity={3} color="#44aaff" distance={30} />
-                        <PillarsLand />
+                        <Suspense fallback={null}><PillarsLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 <div style={cardBox("calc(1200vh + 140px)", "450px")}>
