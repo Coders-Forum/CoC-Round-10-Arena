@@ -29,10 +29,37 @@ import CemeteryLand from "../lands/CemeteryLand.jsx"
 import NecroLand from "../lands/NecroLand.jsx"
 import PillarsLand from "../lands/PillarsLand.jsx"
 
-// Preload first two arenas immediately on page load (before Canvas mounts)
+// Preload all GLB models immediately on page load into memory cache
 const base = import.meta.env.BASE_URL
-useGLTF.preload(`${base}models/volcano.glb`)
-useGLTF.preload(`${base}models/snow_mountain.glb`)
+const modelsToPreload = [
+    "volcano.glb",
+    "snow_mountain.glb",
+    "plant_island.glb",
+    "Island.glb",
+    "Coliseum.glb",
+    "Pyramid.glb",
+    "Castle Fortress.glb",
+    "Ruin.glb",
+    "Mayan Temple.glb",
+    "Greek Temple.glb",
+    "Pagoda.glb",
+    "Pedestal.glb",
+    "Cathedral.glb",
+    "Japanese Torii.glb",
+    "Castle (1).glb",
+    "Pagoda(2).glb",
+    "Barracks.glb",
+    "Palace.glb",
+    "Torii Gate.glb",
+    "Mystic Tree.glb",
+    "Dead Trees With Snow.glb",
+    "Temple.glb",
+    "Archway.glb",
+    "Necropolis walls V2.glb",
+    "Cemetery scene.glb",
+    "Column.glb"
+]
+modelsToPreload.forEach((m) => useGLTF.preload(`${base}models/${m}`))
 
 const cards = {
     volcano: {
