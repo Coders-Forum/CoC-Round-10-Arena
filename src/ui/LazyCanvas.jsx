@@ -8,10 +8,11 @@ export default function LazyCanvas({ children, style, camera, ...props }) {
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
-                if (entry.isIntersecting) setVisible(true)
-                else setVisible(false)
+                // Toggle visibility based on viewport intersection
+                // Unmounting when offscreen releases WebGL context to prevent browser context loss
+                setVisible(entry.isIntersecting)
             },
-            { rootMargin: "200px" } // start loading 200px before entering viewport
+            { rootMargin: "600px" } // Load 600px before entering viewport for seamless scrolling
         )
 
         if (containerRef.current) observer.observe(containerRef.current)

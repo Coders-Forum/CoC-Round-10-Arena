@@ -1,4 +1,5 @@
-import { Canvas } from "@react-three/fiber"
+import { Suspense } from "react"
+import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
 import PlantIsland from "../lands/PlantIsland.jsx"
@@ -27,6 +28,38 @@ import ArchwayLand from "../lands/ArchwayLand.jsx"
 import CemeteryLand from "../lands/CemeteryLand.jsx"
 import NecroLand from "../lands/NecroLand.jsx"
 import PillarsLand from "../lands/PillarsLand.jsx"
+
+// Preload all GLB models immediately on page load into memory cache
+const base = import.meta.env.BASE_URL
+const modelsToPreload = [
+    "volcano.glb",
+    "snow_mountain.glb",
+    "plant_island.glb",
+    "Island.glb",
+    "Coliseum.glb",
+    "Pyramid.glb",
+    "Castle Fortress.glb",
+    "Ruin.glb",
+    "Mayan Temple.glb",
+    "Greek Temple.glb",
+    "Pagoda.glb",
+    "Pedestal.glb",
+    "Cathedral.glb",
+    "Japanese Torii.glb",
+    "Castle (1).glb",
+    "Pagoda(2).glb",
+    "Barracks.glb",
+    "Palace.glb",
+    "Torii Gate.glb",
+    "Mystic Tree.glb",
+    "Dead Trees With Snow.glb",
+    "Temple.glb",
+    "Archway.glb",
+    "Necropolis walls V2.glb",
+    "Cemetery scene.glb",
+    "Column.glb"
+]
+modelsToPreload.forEach((m) => useGLTF.preload(`${base}models/${m}`))
 
 const cards = {
     volcano: {
@@ -309,7 +342,7 @@ export default function Scene() {
                         <directionalLight position={[10, 15, 10]} intensity={1.5} />
                         <directionalLight position={[-10, 5, -10]} intensity={0.6} />
                         <pointLight position={[0, 22, 0]} intensity={5} color="#ff4500" distance={40} />
-                        <VolcanoLand />
+                        <Suspense fallback={null}><VolcanoLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 {/* Volcano card — right of model, left-aligned */}
@@ -328,7 +361,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 10, -10]} intensity={0.5} color="#99ccff" />
                         <pointLight position={[0, -3, 0]} intensity={1.5} color="#ddeeff" distance={30} />
                         <pointLight position={[0, 10, -15]} intensity={1.2} color="#aabbdd" distance={40} />
-                        <SnowLand />
+                        <Suspense fallback={null}><SnowLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 {/* Snow card — left of model, right-aligned */}
