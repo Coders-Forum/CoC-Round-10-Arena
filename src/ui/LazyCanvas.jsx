@@ -8,10 +8,10 @@ export default function LazyCanvas({ children, style, camera, ...props }) {
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
+                // Once visible, NEVER unmount — keeps model in GPU memory
                 if (entry.isIntersecting) setVisible(true)
-                else setVisible(false)
             },
-            { rootMargin: "200px" } // start loading 200px before entering viewport
+            { rootMargin: "1200px" } // start loading ~1 full screen before entering viewport
         )
 
         if (containerRef.current) observer.observe(containerRef.current)

@@ -1,4 +1,5 @@
-import { Canvas } from "@react-three/fiber"
+import { Suspense } from "react"
+import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
 import PlantIsland from "../lands/PlantIsland.jsx"
@@ -27,6 +28,11 @@ import ArchwayLand from "../lands/ArchwayLand.jsx"
 import CemeteryLand from "../lands/CemeteryLand.jsx"
 import NecroLand from "../lands/NecroLand.jsx"
 import PillarsLand from "../lands/PillarsLand.jsx"
+
+// Preload first two arenas immediately on page load (before Canvas mounts)
+const base = import.meta.env.BASE_URL
+useGLTF.preload(`${base}models/volcano.glb`)
+useGLTF.preload(`${base}models/snow_mountain.glb`)
 
 const cards = {
     volcano: {
@@ -309,7 +315,7 @@ export default function Scene() {
                         <directionalLight position={[10, 15, 10]} intensity={1.5} />
                         <directionalLight position={[-10, 5, -10]} intensity={0.6} />
                         <pointLight position={[0, 22, 0]} intensity={5} color="#ff4500" distance={40} />
-                        <VolcanoLand />
+                        <Suspense fallback={null}><VolcanoLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 {/* Volcano card — right of model, left-aligned */}
@@ -328,7 +334,7 @@ export default function Scene() {
                         <directionalLight position={[-10, 10, -10]} intensity={0.5} color="#99ccff" />
                         <pointLight position={[0, -3, 0]} intensity={1.5} color="#ddeeff" distance={30} />
                         <pointLight position={[0, 10, -15]} intensity={1.2} color="#aabbdd" distance={40} />
-                        <SnowLand />
+                        <Suspense fallback={null}><SnowLand /></Suspense>
                     </LazyCanvas>
                 </div>
                 {/* Snow card — left of model, right-aligned */}
