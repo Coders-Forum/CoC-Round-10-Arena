@@ -10,7 +10,6 @@ import CastleFortress from "../lands/CastleFortress.jsx"
 import RuinLand from "../lands/RuinLand.jsx"
 import MayanTemple from "../lands/MayanTemple.jsx"
 import GreekTemple from "../lands/GreekTemple.jsx"
-import AudioPlayer from "../ui/AudioPlayer.jsx"
 import LazyCanvas from "../ui/LazyCanvas.jsx"
 import ArenaCard from "../ui/ArenaCard.jsx"
 import PagodaLand from "../lands/PagodaLand.jsx"
@@ -29,7 +28,7 @@ import CemeteryLand from "../lands/CemeteryLand.jsx"
 import NecroLand from "../lands/NecroLand.jsx"
 import PillarsLand from "../lands/PillarsLand.jsx"
 
-// Staggered model preloading to avoid network congestion for 1000+ concurrent users
+// Staggered model preloading
 const base = import.meta.env.BASE_URL
 const initialModels = ["volcano.glb", "snow_mountain.glb", "plant_island.glb", "Island.glb"]
 initialModels.forEach((m) => useGLTF.preload(`${base}models/${m}`))
@@ -46,13 +45,13 @@ if (typeof window !== "undefined") {
         remainingModels.forEach((m, idx) => {
             setTimeout(() => {
                 useGLTF.preload(`${base}models/${m}`)
-            }, idx * 120)
+            }, idx * 100)
         })
     }
     if ('requestIdleCallback' in window) {
         requestIdleCallback(schedulePreload)
     } else {
-        setTimeout(schedulePreload, 800)
+        setTimeout(schedulePreload, 600)
     }
 }
 
@@ -287,62 +286,9 @@ const ARENAS_LIST = [
     { id: "pillars", LandComponent: PillarsLand, card: cards.pillars, btnText: "Enter Pillars of Eternity", lights: () => (<><ambientLight intensity={1.2} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffffff" /><directionalLight position={[-10, 10, -10]} intensity={1.0} color="#aaccff" /><pointLight position={[0, 5, 0]} intensity={3} color="#44aaff" distance={30} /></>) },
 ]
 
-const cardBox = (top, left) => ({
-    position: "absolute",
-    top,
-    left,
-    display: "flex",
-    alignItems: "flex-end",
-    zIndex: 5,
-    pointerEvents: "none"
-})
-
-const btnStyle = {
-    background: "rgba(0,0,0,0.75)",
-    border: "1px solid #c47d00",
-    borderRadius: "30px",
-    padding: "12px 28px",
-    color: "#ffe066",
-    fontFamily: "'Georgia', serif",
-    fontSize: "13px",
-    fontWeight: "bold",
-    letterSpacing: "2px",
-    cursor: "pointer",
-    textTransform: "uppercase",
-    boxShadow: "0 0 12px #c47d00, 0 0 24px #c47d0055",
-    transition: "all 0.3s",
-    zIndex: 10,
-    position: "relative"
-}
-
-const canvasBox = (top, left, width = "420px", height = "420px") => ({
-    position: "absolute",
-    top, left, width, height,
-    pointerEvents: "auto"
-})
-
-const btnBox = (top, left) => ({
-    position: "absolute",
-    top, left,
-    display: "flex",
-    justifyContent: "center",
-    width: "420px",
-    zIndex: 10
-})
-
 export default function Scene() {
-    const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth < 768)
     const [activeIdx, setActiveIdx] = useState(0)
-
     const touchStartX = useRef(0)
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 768)
-        }
-        window.addEventListener("resize", handleResize)
-        return () => window.removeEventListener("resize", handleResize)
-    }, [])
 
     const cameraConfig = {
         position: [25, 20, 25],
@@ -362,6 +308,16 @@ export default function Scene() {
         setActiveIdx((prev) => (prev < ARENAS_LIST.length - 1 ? prev + 1 : 0))
     }
 
+    // Keyboard navigation (Left / Right arrow keys)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === "ArrowLeft") handlePrev()
+            else if (e.key === "ArrowRight") handleNext()
+        }
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+    }, [])
+
     const handleTouchStart = (e) => {
         touchStartX.current = e.touches[0].clientX
     }
@@ -375,79 +331,145 @@ export default function Scene() {
         }
     }
 
-    if (isMobile) {
-        return (
-            <>
-                <AudioPlayer />
-                <div
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd}
-                    style={{
-                        minHeight: "100vh",
-                        width: "100vw",
+    const accentColor = currentArena.card.accentColor || "#c47d00"
+    const glowColor = currentArena.card.glowColor || "#ffaa00"
+
+    const btnDynamicStyle = {
+        background: "rgba(0,0,0,0.85)",
+        border: `1px solid ${accentColor}`,
+        borderRadius: "30px",
+        padding: "14px 32px",
+        color: "#ffffff",
+        fontFamily: "'Georgia', serif",
+        fontSize: "13px",
+        fontWeight: "bold",
+        letterSpacing: "2px",
+        cursor: "pointer",
+        textTransform: "uppercase",
+        boxShadow: `0 0 16px ${glowColor}66, 0 0 32px ${glowColor}33`,
+        transition: "all 0.3s ease",
+        zIndex: 10,
+        position: "relative"
+    }
+
+    return (
+        <div
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            style={{
+                minHeight: "100vh",
+                width: "100vw",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "20px",
+                boxSizing: "border-box",
+                background: `radial-gradient(circle at 50% 40%, ${glowColor}15 0%, #080808 75%)`,
+                transition: "background 0.8s ease",
+                overflowX: "hidden",
+                position: "relative"
+            }}
+        >
+            {/* Ambient Background Glow */}
+            <div style={{
+                position: "absolute",
+                inset: 0,
+                background: `radial-gradient(ellipse at 50% 50%, ${accentColor}22 0%, transparent 60%)`,
+                pointerEvents: "none",
+                transition: "all 0.8s ease"
+            }} />
+
+            {/* Main Universal Showcase Container */}
+            <div style={{
+                width: "100%",
+                maxWidth: "1100px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                zIndex: 2,
+                position: "relative"
+            }}>
+                {/* Navigation Bar */}
+                <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    maxWidth: "500px",
+                    marginBottom: "20px"
+                }}>
+                    <button
+                        onClick={handlePrev}
+                        style={{
+                            background: "rgba(0,0,0,0.75)",
+                            border: `1px solid ${accentColor}aa`,
+                            color: accentColor,
+                            borderRadius: "24px",
+                            padding: "10px 22px",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            letterSpacing: "1px",
+                            cursor: "pointer",
+                            backdropFilter: "blur(8px)",
+                            boxShadow: `0 0 12px ${glowColor}33`,
+                            transition: "all 0.3s ease"
+                        }}
+                    >
+                        ❮ PREV
+                    </button>
+
+                    <div style={{
+                        color: "#ffffff",
+                        fontFamily: "'Georgia', serif",
+                        fontSize: "14px",
+                        fontWeight: "bold",
+                        letterSpacing: "2px",
+                        textShadow: `0 0 10px ${glowColor}88`
+                    }}>
+                        ARENA {activeIdx + 1} / {ARENAS_LIST.length}
+                    </div>
+
+                    <button
+                        onClick={handleNext}
+                        style={{
+                            background: "rgba(0,0,0,0.75)",
+                            border: `1px solid ${accentColor}aa`,
+                            color: accentColor,
+                            borderRadius: "24px",
+                            padding: "10px 22px",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            letterSpacing: "1px",
+                            cursor: "pointer",
+                            backdropFilter: "blur(8px)",
+                            boxShadow: `0 0 12px ${glowColor}33`,
+                            transition: "all 0.3s ease"
+                        }}
+                    >
+                        NEXT ❯
+                    </button>
+                </div>
+
+                {/* Flexible Responsive Showcase (Side-by-side on desktop, stacked on mobile) */}
+                <div style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "32px",
+                    width: "100%"
+                }}>
+                    {/* 3D Model Display Viewport */}
+                    <div style={{
+                        width: "100%",
+                        maxWidth: "460px",
+                        height: "400px",
+                        position: "relative",
                         display: "flex",
-                        flexDirection: "column",
                         alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "16px 12px 32px 12px",
-                        boxSizing: "border-box",
-                        background: "radial-gradient(circle at 50% 30%, #1a1200 0%, #080808 80%)",
-                        overflowX: "hidden"
-                    }}
-                >
-                    {/* Header Banner */}
-                    <div style={{ textAlign: "center", marginTop: "8px" }}>
-                        <div style={{ color: "#c47d00", fontFamily: "'Georgia', serif", fontSize: "11px", letterSpacing: "3px", textTransform: "uppercase" }}>
-                            Clash of Coders — 3D Showcase
-                        </div>
-                        <div style={{ color: "#ffe066", fontFamily: "'Georgia', serif", fontSize: "20px", fontWeight: "bold", letterSpacing: "1px", textShadow: "0 0 12px #c47d00aa" }}>
-                            BATTLE ARENAS
-                        </div>
-                    </div>
-
-                    {/* Navigation Carousel Bar */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", maxWidth: "360px", margin: "12px 0" }}>
-                        <button
-                            onClick={handlePrev}
-                            style={{
-                                background: "rgba(0,0,0,0.8)",
-                                border: "1px solid #c47d00",
-                                color: "#ffe066",
-                                borderRadius: "20px",
-                                padding: "8px 16px",
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                                cursor: "pointer",
-                                backdropFilter: "blur(6px)"
-                            }}
-                        >
-                            ❮ PREV
-                        </button>
-
-                        <div style={{ color: "#ffffff", fontFamily: "'Georgia', serif", fontSize: "13px", fontWeight: "bold", letterSpacing: "1px" }}>
-                            {activeIdx + 1} / {ARENAS_LIST.length}
-                        </div>
-
-                        <button
-                            onClick={handleNext}
-                            style={{
-                                background: "rgba(0,0,0,0.8)",
-                                border: "1px solid #c47d00",
-                                color: "#ffe066",
-                                borderRadius: "20px",
-                                padding: "8px 16px",
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                                cursor: "pointer",
-                                backdropFilter: "blur(6px)"
-                            }}
-                        >
-                            NEXT ❯
-                        </button>
-                    </div>
-
-                    {/* 3D Model Display */}
-                    <div style={{ width: "290px", height: "290px", position: "relative", margin: "0 auto" }}>
+                        justifyContent: "center"
+                    }}>
                         <LazyCanvas camera={cameraConfig} forceVisible={true}>
                             {currentArena.lights()}
                             <Suspense fallback={null}>
@@ -456,478 +478,49 @@ export default function Scene() {
                         </LazyCanvas>
                     </div>
 
-                    {/* Arena Info Card */}
-                    <div style={{ width: "100%", maxWidth: "340px", marginTop: "12px" }}>
-                        <ArenaCard side="left" {...currentArena.card} />
-                    </div>
+                    {/* Arena Card Display */}
+                    <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "20px",
+                        width: "100%",
+                        maxWidth: "360px"
+                    }}>
+                        <ArenaCard side="left" {...currentArena.card} width="100%" />
 
-                    {/* CTA Button */}
-                    <div style={{ marginTop: "16px" }}>
-                        <button style={btnStyle}>{currentArena.btnText}</button>
-                    </div>
-
-                    {/* Quick Arena Pills */}
-                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "center", maxWidth: "340px", marginTop: "16px" }}>
-                        {ARENAS_LIST.map((a, i) => (
-                            <div
-                                key={a.id}
-                                onClick={() => setActiveIdx(i)}
-                                style={{
-                                    width: i === activeIdx ? "20px" : "8px",
-                                    height: "8px",
-                                    borderRadius: "4px",
-                                    background: i === activeIdx ? "#ffe066" : "rgba(255,255,255,0.2)",
-                                    boxShadow: i === activeIdx ? "0 0 8px #ffe066" : "none",
-                                    transition: "all 0.3s",
-                                    cursor: "pointer"
-                                }}
-                            />
-                        ))}
+                        {/* Action CTA Button */}
+                        <button style={btnDynamicStyle}>{currentArena.btnText}</button>
                     </div>
                 </div>
-            </>
-        )
-    }
 
-    // Desktop View
-    return (
-        <>
-            <AudioPlayer />
-
-            <div style={{
-                width: "100vw",
-                height: "1270vh",
-                position: "relative",
-                background: "transparent"
-            }}>
-                {/* ── SCREEN 1 ── */}
-                <div style={canvasBox("20px", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.6} />
-                        <directionalLight position={[10, 15, 10]} intensity={1.5} />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.6} />
-                        <pointLight position={[0, 22, 0]} intensity={5} color="#ff4500" distance={40} />
-                        <Suspense fallback={null}><VolcanoLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("140px", "450px")}>
-                    <ArenaCard side="left" {...cards.volcano} />
-                </div>
-                <div style={btnBox("450px", "20px")}>
-                    <button style={btnStyle}> Enter Volcano Arena</button>
-                </div>
-
-                <div style={canvasBox("calc(100vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.5} />
-                        <directionalLight position={[20, 15, 5]} intensity={1.8} color="#cce8ff" />
-                        <directionalLight position={[-10, 10, -10]} intensity={0.5} color="#99ccff" />
-                        <pointLight position={[0, -3, 0]} intensity={1.5} color="#ddeeff" distance={30} />
-                        <pointLight position={[0, 10, -15]} intensity={1.2} color="#aabbdd" distance={40} />
-                        <Suspense fallback={null}><SnowLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(100vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.snow} />
-                </div>
-                <div style={{ ...btnBox("calc(100vh - 440px + 430px)", "calc(100vw - 440px)") }}>
-                    <button style={btnStyle}> Enter Frozen Peaks</button>
-                </div>
-
-                {/* ── SCREEN 2 ── */}
-                <div style={canvasBox("calc(100vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.5} />
-                        <directionalLight position={[15, 25, 10]} intensity={1.8} color="#aaff66" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#114400" />
-                        <pointLight position={[0, -2, 0]} intensity={1.5} color="#22aa00" distance={30} />
-                        <pointLight position={[5, 10, 5]} intensity={2} color="#aaff44" distance={35} />
-                        <Suspense fallback={null}><PlantIsland /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(100vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.plant} />
-                </div>
-                <div style={btnBox("calc(100vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Jungle Isle</button>
-                </div>
-
-                <div style={canvasBox("calc(200vh - 500px)", "calc(100vw - 520px)", "500px", "500px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.6} />
-                        <directionalLight position={[15, 30, 10]} intensity={2.2} color="#fff5cc" />
-                        <directionalLight position={[-10, 10, -10]} intensity={0.4} color="#aaddff" />
-                        <pointLight position={[0, -3, 0]} intensity={2} color="#00ccff" distance={35} />
-                        <pointLight position={[-10, 8, -10]} intensity={1.5} color="#ffaa33" distance={40} />
-                        <Suspense fallback={null}><IslandLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(200vh - 300px)", "calc(100vw - 870px)")}>
-                    <ArenaCard side="right" {...cards.island} />
-                </div>
-                <div style={{ ...btnBox("calc(200vh - 500px + 510px)", "calc(100vw - 520px)"), width: "500px" }}>
-                    <button style={btnStyle}> Enter Island Shores</button>
-                </div>
-
-                {/* ── SCREEN 3 ── */}
-                <div style={canvasBox("calc(200vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.4} />
-                        <directionalLight position={[25, 20, 5]} intensity={2.0} color="#ddeeff" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#aabbcc" />
-                        <pointLight position={[0, 15, -10]} intensity={2} color="#c0d0ff" distance={40} />
-                        <pointLight position={[0, -2, 0]} intensity={0.8} color="#886633" distance={25} />
-                        <Suspense fallback={null}><ColiseumLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(200vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.coliseum} />
-                </div>
-                <div style={btnBox("calc(200vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter The Coliseum</button>
-                </div>
-
-                <div style={canvasBox("calc(300vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.3} />
-                        <directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffcc77" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.2} color="#331a00" />
-                        <pointLight position={[0, -5, 0]} intensity={1.5} color="#ff8800" distance={40} />
-                        <pointLight position={[0, 10, -15]} intensity={2} color="#ffaa00" distance={50} />
-                        <Suspense fallback={null}><PyramidLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(300vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.pyramid} />
-                </div>
-                <div style={btnBox("calc(300vh - 440px + 450px)", "calc(100vw - 440px)")}>
-                    <button style={btnStyle}> Enter Desert Pyramid</button>
-                </div>
-
-                {/* ── SCREEN 4 ── */}
-                <div style={canvasBox("calc(300vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.8} />
-                        <directionalLight position={[15, 25, 15]} intensity={1.3} />
-                        <directionalLight position={[-10, 10, -10]} intensity={0.5} />
-                        <Suspense fallback={null}><CastleFortress /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(300vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.castle} />
-                </div>
-                <div style={btnBox("calc(300vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Castle Fortress</button>
-                </div>
-
-                <div style={canvasBox("calc(400vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.8} />
-                        <directionalLight position={[15, 25, 15]} intensity={1.3} />
-                        <directionalLight position={[-10, 10, -10]} intensity={0.5} />
-                        <Suspense fallback={null}><RuinLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(400vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.ruin} />
-                </div>
-                <div style={btnBox("calc(400vh - 440px + 450px)", "calc(100vw - 440px)")}>
-                    <button style={btnStyle}> Enter Ancient Ruins</button>
-                </div>
-
-                {/* ── SCREEN 5 ── */}
-                <div style={canvasBox("calc(400vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.35} />
-                        <directionalLight position={[15, 25, 10]} intensity={1.8} color="#ccccbb" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.25} color="#223300" />
-                        <pointLight position={[0, -2, 0]} intensity={1.5} color="#554433" distance={30} />
-                        <pointLight position={[0, 8, 5]} intensity={2} color="#ff8800" distance={35} />
-                        <Suspense fallback={null}><MayanTemple /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(400vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.mayan} />
-                </div>
-                <div style={btnBox("calc(400vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Mayan Temple</button>
-                </div>
-
-                <div style={canvasBox("calc(500vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.7} />
-                        <directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffffff" />
-                        <directionalLight position={[-10, 15, -10]} intensity={0.6} color="#cce0ff" />
-                        <pointLight position={[0, -3, 0]} intensity={1.8} color="#fff8ee" distance={35} />
-                        <pointLight position={[0, 20, -12]} intensity={2.2} color="#ffe8aa" distance={50} />
-                        <Suspense fallback={null}><GreekTemple /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(500vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.greek} />
-                </div>
-                <div style={btnBox("calc(500vh - 440px + 450px)", "calc(100vw - 440px)")}>
-                    <button style={btnStyle}> Enter Greek Temple</button>
-                </div>
-
-                {/* ── SCREEN 6 ── */}
-                <div style={canvasBox("calc(500vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.4} />
-                        <directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffcc88" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" />
-                        <pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} />
-                        <pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} />
-                        <Suspense fallback={null}><PagodaLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(500vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.pagoda} />
-                </div>
-                <div style={btnBox("calc(500vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Pagoda Tower</button>
-                </div>
-
-                <div style={canvasBox("calc(600vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.6} />
-                        <directionalLight position={[20, 30, 10]} intensity={1.8} color="#ddeeff" />
-                        <directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" />
-                        <pointLight position={[0, -3, 0]} intensity={1.5} color="#ccddee" distance={35} />
-                        <pointLight position={[0, 15, -10]} intensity={1.8} color="#eef0ff" distance={45} />
-                        <Suspense fallback={null}><PedestalLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(600vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.pedestal} />
-                </div>
-                <div style={btnBox("calc(600vh - 440px + 450px)", "calc(100vw - 440px)")}>
-                    <button style={btnStyle}> Enter Stone Pedestal</button>
-                </div>
-
-                {/* ── SCREEN 7 ── */}
-                <div style={canvasBox("calc(600vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.8} />
-                        <directionalLight position={[15, 30, 10]} intensity={2.2} color="#ffffff" />
-                        <directionalLight position={[-10, 15, -10]} intensity={0.5} color="#aaccff" />
-                        <pointLight position={[0, 10, 0]} intensity={2} color="#ddeeff" distance={40} />
-                        <pointLight position={[0, -3, 5]} intensity={1.5} color="#ffffff" distance={35} />
-                        <Suspense fallback={null}><CathedralLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(600vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.cathedral} />
-                </div>
-                <div style={btnBox("calc(600vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Santorini</button>
-                </div>
-
-                <div style={canvasBox("calc(700vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.4} />
-                        <directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffcc88" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" />
-                        <pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} />
-                        <pointLight position={[0, 12, -8]} intensity={2} color="#ff8800" distance={40} />
-                        <Suspense fallback={null}><ToriiLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(700vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.torii} />
-                </div>
-                <div style={btnBox("calc(700vh - 440px + 450px)", "calc(100vw - 440px)")}>
-                    <button style={btnStyle}> Enter Torii Gate</button>
-                </div>
-
-                {/* ── SCREEN 8 ── */}
-                <div style={canvasBox("calc(700vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.6} />
-                        <directionalLight position={[20, 30, 10]} intensity={2.0} color="#ddeeff" />
-                        <directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" />
-                        <pointLight position={[0, 10, 0]} intensity={2} color="#bbccee" distance={40} />
-                        <pointLight position={[0, -3, 5]} intensity={1.2} color="#99aabb" distance={30} />
-                        <Suspense fallback={null}><Castle2Land /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(700vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.castle2} />
-                </div>
-                <div style={btnBox("calc(700vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Rock Fort</button>
-                </div>
-
-                <div style={canvasBox("calc(800vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.5} />
-                        <directionalLight position={[15, 25, 10]} intensity={1.8} color="#aaffaa" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#113300" />
-                        <pointLight position={[0, 5, 0]} intensity={3} color="#ff5500" distance={35} />
-                        <pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} />
-                        <Suspense fallback={null}><Pagoda2Land /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(800vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.pagoda2} />
-                </div>
-                <div style={{ ...btnBox("calc(800vh - 440px + 430px)", "calc(100vw - 440px)") }}>
-                    <button style={btnStyle}> Enter Jade Pagoda</button>
-                </div>
-
-                {/* ── SCREEN 9 ── */}
-                <div style={canvasBox("calc(800vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.5} />
-                        <directionalLight position={[15, 25, 10]} intensity={1.8} color="#ddbb88" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" />
-                        <pointLight position={[0, 5, 0]} intensity={2} color="#cc8833" distance={35} />
-                        <pointLight position={[0, 12, -8]} intensity={1.5} color="#ffaa44" distance={40} />
-                        <Suspense fallback={null}><BarracksLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(800vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.barracks} />
-                </div>
-                <div style={btnBox("calc(800vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Barracks</button>
-                </div>
-
-                <div style={canvasBox("calc(900vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.6} />
-                        <directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffeeaa" />
-                        <directionalLight position={[-10, 15, -10]} intensity={0.5} color="#bbaa44" />
-                        <pointLight position={[0, 5, 0]} intensity={3} color="#ffdd44" distance={40} />
-                        <pointLight position={[0, 20, -10]} intensity={2} color="#ffcc00" distance={50} />
-                        <Suspense fallback={null}><PalaceLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(900vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.palace} />
-                </div>
-                <div style={{ ...btnBox("calc(900vh - 440px + 450px)", "calc(100vw - 440px)") }}>
-                    <button style={btnStyle}> Enter The Palace</button>
-                </div>
-
-                {/* ── SCREEN 10 ── */}
-                <div style={canvasBox("calc(900vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.5} />
-                        <directionalLight position={[15, 25, 10]} intensity={1.8} color="#ffcc88" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" />
-                        <pointLight position={[0, 5, 0]} intensity={2.5} color="#ff5500" distance={35} />
-                        <pointLight position={[0, 12, 5]} intensity={1.8} color="#ffaa44" distance={40} />
-                        <Suspense fallback={null}><JapaneseShrine /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(900vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.shrine} />
-                </div>
-                <div style={btnBox("calc(900vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Japanese Shrine</button>
-                </div>
-
-                <div style={canvasBox("calc(1000vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={1.2} />
-                        <directionalLight position={[20, 30, 10]} intensity={3.0} color="#ffffff" />
-                        <directionalLight position={[-10, 15, -10]} intensity={1.5} color="#eef5ff" />
-                        <directionalLight position={[0, -10, 15]} intensity={1.0} color="#cce0ff" />
-                        <pointLight position={[0, 10, 5]} intensity={4} color="#ffffff" distance={50} />
-                        <Suspense fallback={null}><DeadForest /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(1000vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.deadforest} />
-                </div>
-                <div style={{ ...btnBox("calc(1000vh - 440px + 450px)", "calc(100vw - 440px)") }}>
-                    <button style={btnStyle}> Enter Dead Winter Forest</button>
-                </div>
-
-                {/* ── SCREEN 11 ── */}
-                <div style={canvasBox("calc(1000vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.5} />
-                        <directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffeeaa" />
-                        <directionalLight position={[-10, 10, -10]} intensity={0.4} color="#ffcc66" />
-                        <pointLight position={[0, 10, 0]} intensity={2.5} color="#ffdd44" distance={40} />
-                        <pointLight position={[0, -3, 5]} intensity={1.2} color="#ff8800" distance={25} />
-                        <Suspense fallback={null}><TempleLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(1000vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.temple} />
-                </div>
-                <div style={btnBox("calc(1000vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Saint Basil's</button>
-                </div>
-
-                <div style={canvasBox("calc(1100vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.7} />
-                        <directionalLight position={[20, 30, 10]} intensity={2.2} color="#ffffff" />
-                        <directionalLight position={[-10, 15, -10]} intensity={0.5} color="#ddeeff" />
-                        <pointLight position={[0, 5, 0]} intensity={2} color="#ffffff" distance={35} />
-                        <pointLight position={[0, 15, -8]} intensity={1.5} color="#eeeeff" distance={40} />
-                        <Suspense fallback={null}><ArchwayLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(1100vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.archway} />
-                </div>
-                <div style={{ ...btnBox("calc(1100vh - 440px + 450px)", "calc(100vw - 440px)") }}>
-                    <button style={btnStyle}> Enter Arc de Triomphe</button>
-                </div>
-
-                {/* ── SCREEN 12 ── */}
-                <div style={canvasBox("calc(1100vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.3} />
-                        <directionalLight position={[15, 25, 10]} intensity={1.5} color="#ffeeaa" />
-                        <directionalLight position={[-10, 5, -10]} intensity={0.2} color="#332200" />
-                        <Suspense fallback={null}><NecroLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(1100vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.necro} />
-                </div>
-                <div style={btnBox("calc(1100vh + 450px)", "20px")}>
-                    <button style={btnStyle}> Enter Necropolis</button>
-                </div>
-
-                <div style={canvasBox("calc(1200vh - 440px)", "calc(100vw - 440px)")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={0.9} />
-                        <directionalLight position={[8, 15, 8]} intensity={0.8} color="#99aabb" />
-                        <directionalLight position={[-8, 10, -8]} intensity={0.5} color="#667788" />
-                        <Suspense fallback={null}><CemeteryLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(1200vh - 300px)", "calc(100vw - 790px)")}>
-                    <ArenaCard side="right" {...cards.cemetery} />
-                </div>
-                <div style={{ ...btnBox("calc(1200vh - 440px + 450px)", "calc(100vw - 440px)") }}>
-                    <button style={btnStyle}> Enter Cemetery</button>
-                </div>
-
-                {/* ── SCREEN 13 ── */}
-                <div style={canvasBox("calc(1200vh + 20px)", "20px")}>
-                    <LazyCanvas camera={cameraConfig}>
-                        <ambientLight intensity={1.2} />
-                        <directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffffff" />
-                        <directionalLight position={[-10, 10, -10]} intensity={1.0} color="#aaccff" />
-                        <pointLight position={[0, 5, 0]} intensity={3} color="#44aaff" distance={30} />
-                        <Suspense fallback={null}><PillarsLand /></Suspense>
-                    </LazyCanvas>
-                </div>
-                <div style={cardBox("calc(1200vh + 140px)", "450px")}>
-                    <ArenaCard side="left" {...cards.pillars} />
-                </div>
-                <div style={btnBox("calc(1200vh + 450px)", "20px")}>
-                    <button style={btnStyle}>Enter Pillars of Eternity</button>
+                {/* Quick Arena Selection Indicator Pills */}
+                <div style={{
+                    display: "flex",
+                    gap: "6px",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    maxWidth: "500px",
+                    marginTop: "32px"
+                }}>
+                    {ARENAS_LIST.map((a, i) => (
+                        <div
+                            key={a.id}
+                            onClick={() => setActiveIdx(i)}
+                            title={a.card.title}
+                            style={{
+                                width: i === activeIdx ? "24px" : "8px",
+                                height: "8px",
+                                borderRadius: "4px",
+                                background: i === activeIdx ? accentColor : "rgba(255,255,255,0.2)",
+                                boxShadow: i === activeIdx ? `0 0 10px ${accentColor}` : "none",
+                                transition: "all 0.3s ease",
+                                cursor: "pointer"
+                            }}
+                        />
+                    ))}
                 </div>
             </div>
-        </>
+        </div>
     )
 }

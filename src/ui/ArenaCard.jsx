@@ -1,7 +1,7 @@
-export default function ArenaCard({ side, accentColor, glowColor, title, subtitle, tags, description, nextArena }) {
+export default function ArenaCard({ side, accentColor, glowColor, title, subtitle, tags, description, nextArena, width }) {
     const isLeft = side === "left"
     return (
-        <div style={{ position: "relative", width: "320px", padding: "24px 20px", background: "rgba(0,0,0,0.7)", border: `1px solid ${accentColor}55`, borderRadius: "12px", backdropFilter: "blur(8px)", boxShadow: `0 0 20px ${glowColor}33, inset 0 0 30px ${glowColor}11`, marginLeft: isLeft ? "10px" : "0", marginRight: isLeft ? "0" : "10px", animation: "cardFloat 4s ease-in-out infinite", overflow: "hidden" }}>
+        <div style={{ position: "relative", width: width || "100%", maxWidth: "360px", boxSizing: "border-box", padding: "24px 20px", background: "rgba(0,0,0,0.75)", border: `1px solid ${accentColor}55`, borderRadius: "14px", backdropFilter: "blur(10px)", boxShadow: `0 0 24px ${glowColor}33, inset 0 0 30px ${glowColor}11`, animation: "cardFloat 4s ease-in-out infinite", overflow: "hidden" }}>
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`, animation: "glowSweep 3s ease-in-out infinite" }} />
             <div style={{ position: "absolute", top: "-40px", left: isLeft ? "-40px" : "auto", right: isLeft ? "auto" : "-40px", width: "120px", height: "120px", borderRadius: "50%", background: `radial-gradient(circle, ${glowColor}33 0%, transparent 70%)`, animation: "glowPulse 3s ease-in-out infinite", pointerEvents: "none" }} />
             <div style={{ color: accentColor, fontFamily: "'Georgia', serif", fontSize: "11px", letterSpacing: "3px", textTransform: "uppercase", marginBottom: "6px", opacity: 0.8 }}>{subtitle}</div>
