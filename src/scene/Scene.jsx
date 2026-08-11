@@ -286,29 +286,131 @@ const ARENAS_LIST = [
     { id: "pillars", LandComponent: PillarsLand, card: cards.pillars, btnText: "Enter Pillars of Eternity", lights: () => (<><ambientLight intensity={1.2} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffffff" /><directionalLight position={[-10, 10, -10]} intensity={1.0} color="#aaccff" /><pointLight position={[0, 5, 0]} intensity={3} color="#44aaff" distance={30} /></>) },
 ]
 
-export default function Scene() {
+const CAROUSEL_BREAKPOINT = 1024
+
+// ─────────────────────────────────────────────────────────────────────
+// Desktop Scroll Layout — each arena is a full viewport-height section
+// ─────────────────────────────────────────────────────────────────────
+function DesktopScrollLayout() {
+    const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
+
+    return (
+        <div style={{ width: "100%" }}>
+            {ARENAS_LIST.map((arena, idx) => {
+                const LandComp = arena.LandComponent
+                const isEven = idx % 2 === 0
+                const nextArena = idx < ARENAS_LIST.length - 1 ? ARENAS_LIST[idx + 1].card.title : null
+                const accent = arena.card.accentColor
+                const glow = arena.card.glowColor
+
+                return (
+                    <div
+                        key={arena.id}
+                        style={{
+                            minHeight: "100vh",
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "40px 5%",
+                            boxSizing: "border-box",
+                            position: "relative",
+                            background: `radial-gradient(ellipse at ${isEven ? "30%" : "70%"} 50%, ${glow}18 0%, transparent 60%)`
+                        }}
+                    >
+                        <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "60px",
+                            width: "100%",
+                            maxWidth: "1200px",
+                            flexDirection: isEven ? "row" : "row-reverse"
+                        }}>
+                            {/* 3D Canvas */}
+                            <div style={{
+                                width: "55%",
+                                maxWidth: "600px",
+                                height: "500px",
+                                position: "relative"
+                            }}>
+                                <LazyCanvas camera={cameraConfig}>
+                                    {arena.lights()}
+                                    <Suspense fallback={null}>
+                                        <LandComp />
+                                    </Suspense>
+                                </LazyCanvas>
+                            </div>
+
+                            {/* Card + Button */}
+                            <div style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: "20px",
+                                width: "40%",
+                                maxWidth: "380px"
+                            }}>
+                                <ArenaCard
+                                    side={isEven ? "right" : "left"}
+                                    {...arena.card}
+                                    nextArena={nextArena}
+                                    width="100%"
+                                />
+                                <button style={{
+                                    background: "rgba(0,0,0,0.85)",
+                                    border: `1px solid ${accent}`,
+                                    borderRadius: "30px",
+                                    padding: "14px 32px",
+                                    color: "#ffffff",
+                                    fontFamily: "'Georgia', serif",
+                                    fontSize: "13px",
+                                    fontWeight: "bold",
+                                    letterSpacing: "2px",
+                                    cursor: "pointer",
+                                    textTransform: "uppercase",
+                                    boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
+                                    transition: "all 0.3s ease"
+                                }}>
+                                    {arena.btnText}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Section Divider */}
+                        {idx < ARENAS_LIST.length - 1 && (
+                            <div style={{
+                                position: "absolute",
+                                bottom: 0,
+                                left: "10%",
+                                right: "10%",
+                                height: "1px",
+                                background: `linear-gradient(90deg, transparent, ${accent}44, transparent)`
+                            }} />
+                        )}
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Carousel Layout — for tablets, mobiles, small screens (<1024px)
+// Uses a SINGLE Canvas to avoid WebGL context limits
+// ─────────────────────────────────────────────────────────────────────
+function CarouselLayout() {
     const [activeIdx, setActiveIdx] = useState(0)
     const touchStartX = useRef(0)
 
-    const cameraConfig = {
-        position: [25, 20, 25],
-        fov: 35,
-        near: 0.1,
-        far: 2000
-    }
+    const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
 
     const currentArena = ARENAS_LIST[activeIdx]
     const CurrentLand = currentArena.LandComponent
 
-    const handlePrev = () => {
-        setActiveIdx((prev) => (prev > 0 ? prev - 1 : ARENAS_LIST.length - 1))
-    }
+    const handlePrev = () => setActiveIdx((p) => (p > 0 ? p - 1 : ARENAS_LIST.length - 1))
+    const handleNext = () => setActiveIdx((p) => (p < ARENAS_LIST.length - 1 ? p + 1 : 0))
 
-    const handleNext = () => {
-        setActiveIdx((prev) => (prev < ARENAS_LIST.length - 1 ? prev + 1 : 0))
-    }
-
-    // Keyboard navigation (Left / Right arrow keys)
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === "ArrowLeft") handlePrev()
@@ -318,39 +420,14 @@ export default function Scene() {
         return () => window.removeEventListener("keydown", handleKeyDown)
     }, [])
 
-    const handleTouchStart = (e) => {
-        touchStartX.current = e.touches[0].clientX
-    }
-
+    const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX }
     const handleTouchEnd = (e) => {
-        const touchEndX = e.changedTouches[0].clientX
-        const diff = touchStartX.current - touchEndX
-        if (Math.abs(diff) > 40) {
-            if (diff > 0) handleNext()
-            else handlePrev()
-        }
+        const diff = touchStartX.current - e.changedTouches[0].clientX
+        if (Math.abs(diff) > 40) { diff > 0 ? handleNext() : handlePrev() }
     }
 
-    const accentColor = currentArena.card.accentColor || "#c47d00"
-    const glowColor = currentArena.card.glowColor || "#ffaa00"
-
-    const btnDynamicStyle = {
-        background: "rgba(0,0,0,0.85)",
-        border: `1px solid ${accentColor}`,
-        borderRadius: "30px",
-        padding: "14px 32px",
-        color: "#ffffff",
-        fontFamily: "'Georgia', serif",
-        fontSize: "13px",
-        fontWeight: "bold",
-        letterSpacing: "2px",
-        cursor: "pointer",
-        textTransform: "uppercase",
-        boxShadow: `0 0 16px ${glowColor}66, 0 0 32px ${glowColor}33`,
-        transition: "all 0.3s ease",
-        zIndex: 10,
-        position: "relative"
-    }
+    const accent = currentArena.card.accentColor
+    const glow = currentArena.card.glowColor
 
     return (
         <div
@@ -363,145 +440,87 @@ export default function Scene() {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                padding: "20px",
+                padding: "16px",
                 boxSizing: "border-box",
-                background: `radial-gradient(circle at 50% 40%, ${glowColor}15 0%, #080808 75%)`,
+                background: `radial-gradient(circle at 50% 40%, ${glow}15 0%, #080808 75%)`,
                 transition: "background 0.8s ease",
                 overflowX: "hidden",
                 position: "relative"
             }}
         >
-            {/* Ambient Background Glow */}
+            {/* Ambient glow */}
             <div style={{
-                position: "absolute",
-                inset: 0,
-                background: `radial-gradient(ellipse at 50% 50%, ${accentColor}22 0%, transparent 60%)`,
-                pointerEvents: "none",
-                transition: "all 0.8s ease"
+                position: "absolute", inset: 0,
+                background: `radial-gradient(ellipse at 50% 50%, ${accent}22 0%, transparent 60%)`,
+                pointerEvents: "none", transition: "all 0.8s ease"
             }} />
 
-            {/* Main Universal Showcase Container */}
             <div style={{
-                width: "100%",
-                maxWidth: "1100px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                zIndex: 2,
-                position: "relative"
+                width: "100%", maxWidth: "600px",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                zIndex: 2, position: "relative", gap: "16px"
             }}>
-                {/* Navigation Bar */}
+                {/* Navigation */}
                 <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                    maxWidth: "500px",
-                    marginBottom: "20px"
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    width: "100%", maxWidth: "400px"
                 }}>
-                    <button
-                        onClick={handlePrev}
-                        style={{
-                            background: "rgba(0,0,0,0.75)",
-                            border: `1px solid ${accentColor}aa`,
-                            color: accentColor,
-                            borderRadius: "24px",
-                            padding: "10px 22px",
-                            fontSize: "12px",
-                            fontWeight: "bold",
-                            letterSpacing: "1px",
-                            cursor: "pointer",
-                            backdropFilter: "blur(8px)",
-                            boxShadow: `0 0 12px ${glowColor}33`,
-                            transition: "all 0.3s ease"
-                        }}
-                    >
-                        ❮ PREV
-                    </button>
+                    <button onClick={handlePrev} style={{
+                        background: "rgba(0,0,0,0.75)", border: `1px solid ${accent}aa`,
+                        color: accent, borderRadius: "24px", padding: "8px 18px",
+                        fontSize: "11px", fontWeight: "bold", letterSpacing: "1px",
+                        cursor: "pointer", backdropFilter: "blur(8px)",
+                        boxShadow: `0 0 12px ${glow}33`, transition: "all 0.3s ease"
+                    }}>❮ PREV</button>
 
                     <div style={{
-                        color: "#ffffff",
-                        fontFamily: "'Georgia', serif",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                        letterSpacing: "2px",
-                        textShadow: `0 0 10px ${glowColor}88`
-                    }}>
-                        ARENA {activeIdx + 1} / {ARENAS_LIST.length}
-                    </div>
+                        color: "#fff", fontFamily: "'Georgia', serif",
+                        fontSize: "13px", fontWeight: "bold", letterSpacing: "2px",
+                        textShadow: `0 0 10px ${glow}88`
+                    }}>ARENA {activeIdx + 1} / {ARENAS_LIST.length}</div>
 
-                    <button
-                        onClick={handleNext}
-                        style={{
-                            background: "rgba(0,0,0,0.75)",
-                            border: `1px solid ${accentColor}aa`,
-                            color: accentColor,
-                            borderRadius: "24px",
-                            padding: "10px 22px",
-                            fontSize: "12px",
-                            fontWeight: "bold",
-                            letterSpacing: "1px",
-                            cursor: "pointer",
-                            backdropFilter: "blur(8px)",
-                            boxShadow: `0 0 12px ${glowColor}33`,
-                            transition: "all 0.3s ease"
-                        }}
-                    >
-                        NEXT ❯
-                    </button>
+                    <button onClick={handleNext} style={{
+                        background: "rgba(0,0,0,0.75)", border: `1px solid ${accent}aa`,
+                        color: accent, borderRadius: "24px", padding: "8px 18px",
+                        fontSize: "11px", fontWeight: "bold", letterSpacing: "1px",
+                        cursor: "pointer", backdropFilter: "blur(8px)",
+                        boxShadow: `0 0 12px ${glow}33`, transition: "all 0.3s ease"
+                    }}>NEXT ❯</button>
                 </div>
 
-                {/* Flexible Responsive Showcase (Side-by-side on desktop, stacked on mobile) */}
+                {/* 3D Viewport */}
                 <div style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "32px",
-                    width: "100%"
+                    width: "100%", aspectRatio: "4/3", maxHeight: "50vh",
+                    position: "relative"
                 }}>
-                    {/* 3D Model Display Viewport */}
-                    <div style={{
-                        width: "100%",
-                        maxWidth: "460px",
-                        height: "400px",
-                        position: "relative",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center"
-                    }}>
-                        <LazyCanvas camera={cameraConfig} forceVisible={true}>
-                            {currentArena.lights()}
-                            <Suspense fallback={null}>
-                                <CurrentLand key={currentArena.id} />
-                            </Suspense>
-                        </LazyCanvas>
-                    </div>
-
-                    {/* Arena Card Display */}
-                    <div style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "20px",
-                        width: "100%",
-                        maxWidth: "360px"
-                    }}>
-                        <ArenaCard side="left" {...currentArena.card} width="100%" />
-
-                        {/* Action CTA Button */}
-                        <button style={btnDynamicStyle}>{currentArena.btnText}</button>
-                    </div>
+                    <LazyCanvas camera={cameraConfig} forceVisible={true}>
+                        {currentArena.lights()}
+                        <Suspense fallback={null}>
+                            <CurrentLand key={currentArena.id} />
+                        </Suspense>
+                    </LazyCanvas>
                 </div>
 
-                {/* Quick Arena Selection Indicator Pills */}
+                {/* Arena Card */}
                 <div style={{
-                    display: "flex",
-                    gap: "6px",
-                    flexWrap: "wrap",
-                    justifyContent: "center",
-                    maxWidth: "500px",
-                    marginTop: "32px"
+                    display: "flex", flexDirection: "column", alignItems: "center",
+                    gap: "16px", width: "100%", maxWidth: "360px"
+                }}>
+                    <ArenaCard side="left" {...currentArena.card} width="100%" />
+                    <button style={{
+                        background: "rgba(0,0,0,0.85)", border: `1px solid ${accent}`,
+                        borderRadius: "30px", padding: "12px 28px", color: "#fff",
+                        fontFamily: "'Georgia', serif", fontSize: "12px", fontWeight: "bold",
+                        letterSpacing: "2px", cursor: "pointer", textTransform: "uppercase",
+                        boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
+                        transition: "all 0.3s ease"
+                    }}>{currentArena.btnText}</button>
+                </div>
+
+                {/* Indicator Pills */}
+                <div style={{
+                    display: "flex", gap: "5px", flexWrap: "wrap",
+                    justifyContent: "center", maxWidth: "360px", marginTop: "12px"
                 }}>
                     {ARENAS_LIST.map((a, i) => (
                         <div
@@ -509,13 +528,11 @@ export default function Scene() {
                             onClick={() => setActiveIdx(i)}
                             title={a.card.title}
                             style={{
-                                width: i === activeIdx ? "24px" : "8px",
-                                height: "8px",
-                                borderRadius: "4px",
-                                background: i === activeIdx ? accentColor : "rgba(255,255,255,0.2)",
-                                boxShadow: i === activeIdx ? `0 0 10px ${accentColor}` : "none",
-                                transition: "all 0.3s ease",
-                                cursor: "pointer"
+                                width: i === activeIdx ? "20px" : "7px",
+                                height: "7px", borderRadius: "4px",
+                                background: i === activeIdx ? accent : "rgba(255,255,255,0.2)",
+                                boxShadow: i === activeIdx ? `0 0 10px ${accent}` : "none",
+                                transition: "all 0.3s ease", cursor: "pointer"
                             }}
                         />
                     ))}
@@ -523,4 +540,26 @@ export default function Scene() {
             </div>
         </div>
     )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Main Scene — switches between scroll and carousel based on screen width
+// ─────────────────────────────────────────────────────────────────────
+export default function Scene() {
+    const [isSmallScreen, setIsSmallScreen] = useState(
+        typeof window !== "undefined" ? window.innerWidth < CAROUSEL_BREAKPOINT : false
+    )
+
+    useEffect(() => {
+        const mq = window.matchMedia(`(max-width: ${CAROUSEL_BREAKPOINT - 1}px)`)
+        const handler = (e) => setIsSmallScreen(e.matches)
+        mq.addEventListener("change", handler)
+        setIsSmallScreen(mq.matches)
+        return () => mq.removeEventListener("change", handler)
+    }, [])
+
+    if (isSmallScreen) {
+        return <CarouselLayout />
+    }
+    return <DesktopScrollLayout />
 }
