@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect, useRef } from "react"
+import { Suspense, useState, useEffect, useRef, useCallback } from "react"
 import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
@@ -28,7 +28,39 @@ import CemeteryLand from "../lands/CemeteryLand.jsx"
 import NecroLand from "../lands/NecroLand.jsx"
 import PillarsLand from "../lands/PillarsLand.jsx"
 
+// ─────────────────────────────────────────────────────────────────────
+// Color Interpolation Utility
+// ─────────────────────────────────────────────────────────────────────
+function parseHex(hex) {
+    const h = hex.replace("#", "")
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+}
+
+function toHex(r, g, b) {
+    return "#" + [r, g, b].map(c => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("")
+}
+
+function lerpColor(colorA, colorB, t) {
+    const [r1, g1, b1] = parseHex(colorA)
+    const [r2, g2, b2] = parseHex(colorB)
+    return toHex(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t)
+}
+
+function buildGradient(bg) {
+    return `radial-gradient(ellipse at 50% 45%, ${bg.colorTop} 0%, ${bg.colorMid} 45%, ${bg.colorBottom} 100%)`
+}
+
+function lerpBg(bgA, bgB, t) {
+    return {
+        colorTop: lerpColor(bgA.colorTop, bgB.colorTop, t),
+        colorMid: lerpColor(bgA.colorMid, bgB.colorMid, t),
+        colorBottom: lerpColor(bgA.colorBottom, bgB.colorBottom, t)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Staggered model preloading
+// ─────────────────────────────────────────────────────────────────────
 const base = import.meta.env.BASE_URL
 const initialModels = ["volcano.glb", "snow_mountain.glb", "plant_island.glb", "Island.glb"]
 initialModels.forEach((m) => useGLTF.preload(`${base}models/${m}`))
@@ -55,206 +87,184 @@ if (typeof window !== "undefined") {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Arena Data — cards + background palettes
+// ─────────────────────────────────────────────────────────────────────
 const cards = {
     volcano: {
-        accentColor: "#ff4500",
-        glowColor: "#ff2200",
-        subtitle: "Difficulty: Inferno",
-        title: "Volcano Arena",
+        accentColor: "#ff4500", glowColor: "#ff2200",
+        subtitle: "Difficulty: Inferno", title: "Volcano Arena",
         description: "Survive the molten battlefield. Lava flows split the arena as debris rains from above. Only the sharpest minds conquer the fire.",
-        tags: ["Extreme", "String Matching", "Most Difficult"]
+        tags: ["Extreme", "String Matching", "Most Difficult"],
+        bg: { colorTop: "#4a0800", colorMid: "#1a0500", colorBottom: "#0a0000" }
     },
     snow: {
-        accentColor: "#88ccff",
-        glowColor: "#aaddff",
-        subtitle: "Difficulty: Blizzard",
-        title: "Frozen Peaks",
+        accentColor: "#88ccff", glowColor: "#aaddff",
+        subtitle: "Difficulty: Blizzard", title: "Frozen Peaks",
         description: "Battle through icy tundra where every move is calculated. Algorithms freeze mid-execution in the cold of the north.",
-        tags: ["Hard", "Dynamic Programming", "Ice Cold"]
+        tags: ["Hard", "Dynamic Programming", "Ice Cold"],
+        bg: { colorTop: "#0a2844", colorMid: "#061828", colorBottom: "#020a10" }
     },
     plant: {
-        accentColor: "#44cc44",
-        glowColor: "#22aa00",
-        subtitle: "Difficulty: Overgrowth",
-        title: "Jungle Isle",
+        accentColor: "#44cc44", glowColor: "#22aa00",
+        subtitle: "Difficulty: Overgrowth", title: "Jungle Isle",
         description: "Navigate through tangled trees and dense undergrowth. Graph traversal comes alive in the wild jungle maze.",
-        tags: ["Medium", "Graph Theory", "Survival"]
+        tags: ["Medium", "Graph Theory", "Survival"],
+        bg: { colorTop: "#0a3010", colorMid: "#051a08", colorBottom: "#020a04" }
     },
     island: {
-        accentColor: "#00ccff",
-        glowColor: "#00aadd",
-        subtitle: "Difficulty: Tidal",
-        title: "Island Shores",
+        accentColor: "#00ccff", glowColor: "#00aadd",
+        subtitle: "Difficulty: Tidal", title: "Island Shores",
         description: "Waves crash as you race against the tide. Greedy algorithms and optimal paths decide who reaches the shore first.",
-        tags: ["Medium", "Greedy", "Time Attack"]
+        tags: ["Medium", "Greedy", "Time Attack"],
+        bg: { colorTop: "#063040", colorMid: "#031a28", colorBottom: "#010a10" }
     },
     coliseum: {
-        accentColor: "#c0d0ff",
-        glowColor: "#8899dd",
-        subtitle: "Difficulty: Gladiator",
-        title: "The Coliseum",
+        accentColor: "#c0d0ff", glowColor: "#8899dd",
+        subtitle: "Difficulty: Gladiator", title: "The Coliseum",
         description: "Enter the grand arena. Face opponents in head-to-head algorithmic combat. Only the most efficient solution wins the crowd.",
-        tags: ["Hard", "Sorting", "Combat"]
+        tags: ["Hard", "Sorting", "Combat"],
+        bg: { colorTop: "#1a1a2e", colorMid: "#0e0e1a", colorBottom: "#06060c" }
     },
     pyramid: {
-        accentColor: "#ffaa00",
-        glowColor: "#ff8800",
-        subtitle: "Difficulty: Ancient",
-        title: "Desert Pyramid",
+        accentColor: "#ffaa00", glowColor: "#ff8800",
+        subtitle: "Difficulty: Ancient", title: "Desert Pyramid",
         description: "Unlock the secrets buried deep within. Recursive descent into the pyramid reveals hidden patterns and ancient logic.",
-        tags: ["Hard", "Recursion", "Hidden Path"]
+        tags: ["Hard", "Recursion", "Hidden Path"],
+        bg: { colorTop: "#3a2800", colorMid: "#1a1200", colorBottom: "#0a0800" }
     },
     castle: {
-        accentColor: "#9988cc",
-        glowColor: "#6655aa",
-        subtitle: "Difficulty: Siege",
-        title: "Castle Fortress",
+        accentColor: "#9988cc", glowColor: "#6655aa",
+        subtitle: "Difficulty: Siege", title: "Castle Fortress",
         description: "Storm the fortress walls. Defensive data structures crumble under optimized attacks. Break through every layer.",
-        tags: ["Expert", "Trees & Graphs", "Siege"]
+        tags: ["Expert", "Trees & Graphs", "Siege"],
+        bg: { colorTop: "#1a1030", colorMid: "#0e0818", colorBottom: "#06040c" }
     },
     ruin: {
-        accentColor: "#88aa44",
-        glowColor: "#446622",
-        subtitle: "Difficulty: Forgotten",
-        title: "Ancient Ruins",
+        accentColor: "#88aa44", glowColor: "#446622",
+        subtitle: "Difficulty: Forgotten", title: "Ancient Ruins",
         description: "Decipher the crumbling code of a lost civilization. Fragment reassembly and pattern reconstruction await the brave.",
-        tags: ["Medium", "Pattern Match", "Exploration"]
+        tags: ["Medium", "Pattern Match", "Exploration"],
+        bg: { colorTop: "#1a2810", colorMid: "#0e1808", colorBottom: "#060a04" }
     },
     mayan: {
-        accentColor: "#cc8833",
-        glowColor: "#aa6611",
-        subtitle: "Difficulty: Sacred",
-        title: "Mayan Temple",
+        accentColor: "#cc8833", glowColor: "#aa6611",
+        subtitle: "Difficulty: Sacred", title: "Mayan Temple",
         description: "Climb the sacred steps to algorithmic enlightenment. Each tier harder than the last. Only the worthy reach the apex.",
-        tags: ["Expert", "DP + Backtrack", "Sacred"]
+        tags: ["Expert", "DP + Backtrack", "Sacred"],
+        bg: { colorTop: "#2e1a08", colorMid: "#180e04", colorBottom: "#0a0602" }
     },
     greek: {
-        accentColor: "#fff8ee",
-        glowColor: "#ddcc99",
-        subtitle: "Difficulty: Olympian",
-        title: "Greek Temple",
+        accentColor: "#fff8ee", glowColor: "#ddcc99",
+        subtitle: "Difficulty: Olympian", title: "Greek Temple",
         description: "Compete under the eyes of the gods. Pure logic, elegant solutions, and mathematical precision define the Olympian coder.",
-        tags: ["Extreme", "Math & Logic", "Divine"]
+        tags: ["Extreme", "Math & Logic", "Divine"],
+        bg: { colorTop: "#22201a", colorMid: "#141210", colorBottom: "#0a0908" }
     },
     pagoda: {
-        accentColor: "#cc2200",
-        glowColor: "#ff4400",
-        subtitle: "Difficulty: Joseon Dynasty",
-        title: "Korean Pagoda",
+        accentColor: "#cc2200", glowColor: "#ff4400",
+        subtitle: "Difficulty: Joseon Dynasty", title: "Korean Pagoda",
         description: "Standing tall from Korea's Joseon Dynasty, this pagoda holds centuries of algorithmic wisdom. Each tier a harder challenge reach the top or fall with honor.",
-        tags: ["Hard", "Joseon Dynasty", "Korean"]
+        tags: ["Hard", "Joseon Dynasty", "Korean"],
+        bg: { colorTop: "#3a0800", colorMid: "#1a0400", colorBottom: "#0a0200" }
     },
     pedestal: {
-        accentColor: "#aabbcc",
-        glowColor: "#ddeeff",
-        subtitle: "Difficulty: Monolith",
-        title: "Stone Pedestal",
+        accentColor: "#aabbcc", glowColor: "#ddeeff",
+        subtitle: "Difficulty: Monolith", title: "Stone Pedestal",
         description: "Stand before the monolith. Immovable, ancient, and unforgiving. Only those with flawless logic may claim the pedestal.",
-        tags: ["Expert", "Binary Search", "Endgame"]
+        tags: ["Expert", "Binary Search", "Endgame"],
+        bg: { colorTop: "#181c22", colorMid: "#0e1014", colorBottom: "#06080a" }
     },
     cathedral: {
-        accentColor: "#aaccff",
-        glowColor: "#ffffff",
-        subtitle: "Difficulty: Whitestone",
-        title: "Santorini",
+        accentColor: "#aaccff", glowColor: "#ffffff",
+        subtitle: "Difficulty: Whitestone", title: "Santorini",
         description: "A lone white building standing against the sky. Clean walls, sharp edges, pure logic. No shortcuts, no mercy just you and the algorithm.",
-        tags: ["Hard", "Divide & Conquer", "Whitestone"]
+        tags: ["Hard", "Divide & Conquer", "Whitestone"],
+        bg: { colorTop: "#1a2030", colorMid: "#101420", colorBottom: "#080a10" }
     },
     torii: {
-        accentColor: "#ff2200",
-        glowColor: "#ff4400",
-        subtitle: "Difficulty: Tang Dynasty",
-        title: "Lantern Gate",
+        accentColor: "#ff2200", glowColor: "#ff4400",
+        subtitle: "Difficulty: Tang Dynasty", title: "Lantern Gate",
         description: "Red lanterns float through the night sky as the sacred gate glows with ancient Chinese spirit. Navigate the maze of floating light one wrong turn and the lanterns go dark.",
-        tags: ["Expert", "Tang Dynasty", "Floating Lanterns"]
+        tags: ["Expert", "Tang Dynasty", "Floating Lanterns"],
+        bg: { colorTop: "#400800", colorMid: "#200400", colorBottom: "#100200" }
     },
     castle2: {
-        accentColor: "#aabbdd",
-        glowColor: "#ccddf0",
-        subtitle: "Difficulty: Ironclad",
-        title: "Rock Fort",
+        accentColor: "#aabbdd", glowColor: "#ccddf0",
+        subtitle: "Difficulty: Ironclad", title: "Rock Fort",
         description: "Hewn from solid rock, this fortress has never fallen. Brute force won't work here only precise, optimized logic can crack the stone walls.",
-        tags: ["Expert", "Graph Traversal", "Ironclad"]
+        tags: ["Expert", "Graph Traversal", "Ironclad"],
+        bg: { colorTop: "#1a1e28", colorMid: "#0e1018", colorBottom: "#06080c" }
     },
     pagoda2: {
-        accentColor: "#44bb44",
-        glowColor: "#ff6633",
-        subtitle: "Difficulty: Shaolin",
-        title: "Shaolin Temple",
+        accentColor: "#44bb44", glowColor: "#ff6633",
+        subtitle: "Difficulty: Shaolin", title: "Shaolin Temple",
         description: "Train in the sacred halls of Shaolin. Master your algorithms like a monk masters his body through discipline, repetition and enlightenment of pure logic.",
-        tags: ["Hard", "Shaolin", "Enlightenment"]
+        tags: ["Hard", "Shaolin", "Enlightenment"],
+        bg: { colorTop: "#1a2a0a", colorMid: "#0e1806", colorBottom: "#060a02" }
     },
     barracks: {
-        accentColor: "#aa7733",
-        glowColor: "#cc9944",
-        subtitle: "Difficulty: Battalion",
-        title: "Barracks",
+        accentColor: "#aa7733", glowColor: "#cc9944",
+        subtitle: "Difficulty: Battalion", title: "Barracks",
         description: "Where warriors are forged. Train your algorithms under pressure. Speed, discipline and raw efficiency are the only currencies accepted here.",
-        tags: ["Medium", "Sorting & Search", "Battalion"]
+        tags: ["Medium", "Sorting & Search", "Battalion"],
+        bg: { colorTop: "#28180a", colorMid: "#180e06", colorBottom: "#0a0804" }
     },
     palace: {
-        accentColor: "#ffdd88",
-        glowColor: "#ffcc44",
-        subtitle: "Difficulty: Royal",
-        title: "The Palace",
+        accentColor: "#ffdd88", glowColor: "#ffcc44",
+        subtitle: "Difficulty: Royal", title: "The Palace",
         description: "The grandest arena of all. Reserved for coders of royal caliber. Every algorithm must be perfect the king accepts nothing less than optimal.",
-        tags: ["Extreme", "All Algorithms", "Royal"]
+        tags: ["Extreme", "All Algorithms", "Royal"],
+        bg: { colorTop: "#302808", colorMid: "#1a1604", colorBottom: "#0a0a02" }
     },
     shrine: {
-        accentColor: "#ff6633",
-        glowColor: "#ff4400",
-        subtitle: "Difficulty: Zen Master",
-        title: "Japanese Shrine",
+        accentColor: "#ff6633", glowColor: "#ff4400",
+        subtitle: "Difficulty: Zen Master", title: "Japanese Shrine",
         description: "Pass through the sacred Torii gate beneath the mystic autumn tree. Silence your mind, find the optimal path, and achieve algorithmic enlightenment.",
-        tags: ["Expert", "Path Finding", "Zen"]
+        tags: ["Expert", "Path Finding", "Zen"],
+        bg: { colorTop: "#381008", colorMid: "#1c0804", colorBottom: "#0c0402" }
     },
     deadforest: {
-        accentColor: "#aabbcc",
-        glowColor: "#ddeeff",
-        subtitle: "Difficulty: Norse Curse",
-        title: "Norwegian Dead Forest",
+        accentColor: "#aabbcc", glowColor: "#ddeeff",
+        subtitle: "Difficulty: Norse Curse", title: "Norwegian Dead Forest",
         description: "Deep in the frozen Norwegian wilderness, cursed trees stand under eternal darkness. Face the wrath of Norse winter only Odin's chosen coders survive.",
-        tags: ["Hard", "Norse Curse", "Frozen"]
+        tags: ["Hard", "Norse Curse", "Frozen"],
+        bg: { colorTop: "#141a22", colorMid: "#0a0e14", colorBottom: "#04060a" }
     },
     temple: {
-        accentColor: "#ffcc44",
-        glowColor: "#ffdd88",
-        subtitle: "Difficulty: Orthodox",
-        title: "Saint Basil's Cathedral",
+        accentColor: "#ffcc44", glowColor: "#ffdd88",
+        subtitle: "Difficulty: Orthodox", title: "Saint Basil's Cathedral",
         description: "Rising from Red Square, this Russian Orthodox masterpiece demands divine precision. Code with the discipline of a Tsar one mistake and the domes crumble.",
-        tags: ["Hard", "Russian Orthodox", "Sacred"]
+        tags: ["Hard", "Russian Orthodox", "Sacred"],
+        bg: { colorTop: "#2a1a08", colorMid: "#180e04", colorBottom: "#0a0802" }
     },
     archway: {
-        accentColor: "#ddccbb",
-        glowColor: "#ffffff",
-        subtitle: "Difficulty: French Empire",
-        title: "Arc de Triomphe",
+        accentColor: "#ddccbb", glowColor: "#ffffff",
+        subtitle: "Difficulty: French Empire", title: "Arc de Triomphe",
         description: "Born from Napoleon's victory, the Arc de Triomphe stands at the heart of Paris. Conquer its algorithmic grandeur and march down the Champs Élysées of code.",
-        tags: ["Extreme", "French Empire", "Monument"]
+        tags: ["Extreme", "French Empire", "Monument"],
+        bg: { colorTop: "#1e1c18", colorMid: "#121010", colorBottom: "#080808" }
     },
     necro: {
-        accentColor: "#ffcc44",
-        glowColor: "#ffaa00",
-        subtitle: "Difficulty: Sacred Burial",
-        title: "Necropolis",
+        accentColor: "#ffcc44", glowColor: "#ffaa00",
+        subtitle: "Difficulty: Sacred Burial", title: "Necropolis",
         description: "Ancient walls guard the resting place of forgotten coders. The sacred light pulses with the knowledge of the dead. Decode their final algorithms.",
-        tags: ["Expert", "Cryptography", "Sacred"]
+        tags: ["Expert", "Cryptography", "Sacred"],
+        bg: { colorTop: "#261a06", colorMid: "#140e04", colorBottom: "#0a0602" }
     },
     cemetery: {
-        accentColor: "#44aa44",
-        glowColor: "#226622",
-        subtitle: "Difficulty: Haunted",
-        title: "Cemetery",
+        accentColor: "#44aa44", glowColor: "#226622",
+        subtitle: "Difficulty: Haunted", title: "Cemetery",
         description: "Gravestones float in the cursed moonlight. The lantern flickers as you debug in the dark. One wrong move and your code joins the buried.",
-        tags: ["Hard", "Backtracking", "Haunted"]
+        tags: ["Hard", "Backtracking", "Haunted"],
+        bg: { colorTop: "#0a1a0a", colorMid: "#060e06", colorBottom: "#020802" }
     },
     pillars: {
-        accentColor: "#44aaff",
-        glowColor: "#0088ff",
-        subtitle: "Difficulty: Eternal",
-        title: "Pillars of Eternity",
+        accentColor: "#44aaff", glowColor: "#0088ff",
+        subtitle: "Difficulty: Eternal", title: "Pillars of Eternity",
         description: "Four ancient pillars crackling with electric energy. This is the final test where only the greatest algorithmic minds are worthy of standing between them.",
-        tags: ["Extreme", "All Algorithms", "Eternal"]
+        tags: ["Extreme", "All Algorithms", "Eternal"],
+        bg: { colorTop: "#061838", colorMid: "#040e20", colorBottom: "#020610" }
     },
 }
 
@@ -289,115 +299,205 @@ const ARENAS_LIST = [
 const CAROUSEL_BREAKPOINT = 1024
 
 // ─────────────────────────────────────────────────────────────────────
-// Desktop Scroll Layout — each arena is a full viewport-height section
+// Desktop Scroll Layout — with scroll-interpolated backgrounds
 // ─────────────────────────────────────────────────────────────────────
 function DesktopScrollLayout() {
     const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
+    const sectionRefs = useRef([])
+    const bgRef = useRef(null)
+    const rafRef = useRef(null)
+
+    const updateBackground = useCallback(() => {
+        const sections = sectionRefs.current
+        if (!bgRef.current || sections.length === 0) return
+
+        const viewportCenter = window.innerHeight / 2
+
+        // Find the section whose center is closest to viewport center
+        let closestIdx = 0
+        let closestDist = Infinity
+
+        for (let i = 0; i < sections.length; i++) {
+            if (!sections[i]) continue
+            const rect = sections[i].getBoundingClientRect()
+            const sectionCenter = rect.top + rect.height / 2
+            const dist = Math.abs(sectionCenter - viewportCenter)
+            if (dist < closestDist) {
+                closestDist = dist
+                closestIdx = i
+            }
+        }
+
+        // Calculate interpolation factor toward next/prev section
+        const currentSection = sections[closestIdx]
+        if (!currentSection) return
+        const rect = currentSection.getBoundingClientRect()
+        const sectionCenter = rect.top + rect.height / 2
+        const offset = (viewportCenter - sectionCenter) / rect.height // -0.5 to +0.5
+
+        const currentBg = ARENAS_LIST[closestIdx].card.bg
+
+        let finalBg
+        if (offset > 0 && closestIdx < ARENAS_LIST.length - 1) {
+            // Scrolling down — blend toward next section
+            const t = Math.min(offset * 2, 1) // 0 → 1 over half a section
+            const nextBg = ARENAS_LIST[closestIdx + 1].card.bg
+            finalBg = lerpBg(currentBg, nextBg, t)
+        } else if (offset < 0 && closestIdx > 0) {
+            // Scrolling up — blend toward previous section
+            const t = Math.min(Math.abs(offset) * 2, 1)
+            const prevBg = ARENAS_LIST[closestIdx - 1].card.bg
+            finalBg = lerpBg(currentBg, prevBg, t)
+        } else {
+            finalBg = currentBg
+        }
+
+        bgRef.current.style.background = buildGradient(finalBg)
+    }, [])
+
+    useEffect(() => {
+        const onScroll = () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current)
+            rafRef.current = requestAnimationFrame(updateBackground)
+        }
+        window.addEventListener("scroll", onScroll, { passive: true })
+        // Initial paint
+        updateBackground()
+        return () => {
+            window.removeEventListener("scroll", onScroll)
+            if (rafRef.current) cancelAnimationFrame(rafRef.current)
+        }
+    }, [updateBackground])
 
     return (
-        <div style={{ width: "100%" }}>
-            {ARENAS_LIST.map((arena, idx) => {
-                const LandComp = arena.LandComponent
-                const isEven = idx % 2 === 0
-                const nextArena = idx < ARENAS_LIST.length - 1 ? ARENAS_LIST[idx + 1].card.title : null
-                const accent = arena.card.accentColor
-                const glow = arena.card.glowColor
+        <>
+            {/* Fixed full-screen background that morphs with scroll */}
+            <div
+                ref={bgRef}
+                style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 0,
+                    background: buildGradient(ARENAS_LIST[0].card.bg),
+                    pointerEvents: "none",
+                    willChange: "background"
+                }}
+            />
 
-                return (
-                    <div
-                        key={arena.id}
-                        style={{
-                            minHeight: "100vh",
-                            width: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "40px 5%",
-                            boxSizing: "border-box",
-                            position: "relative",
-                            background: `radial-gradient(ellipse at ${isEven ? "30%" : "70%"} 50%, ${glow}18 0%, transparent 60%)`
-                        }}
-                    >
-                        <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "60px",
-                            width: "100%",
-                            maxWidth: "1200px",
-                            flexDirection: isEven ? "row" : "row-reverse"
-                        }}>
-                            {/* 3D Canvas */}
-                            <div style={{
-                                width: "55%",
-                                maxWidth: "600px",
-                                height: "500px",
-                                position: "relative"
-                            }}>
-                                <LazyCanvas camera={cameraConfig}>
-                                    {arena.lights()}
-                                    <Suspense fallback={null}>
-                                        <LandComp />
-                                    </Suspense>
-                                </LazyCanvas>
-                            </div>
+            <div style={{ width: "100%", position: "relative", zIndex: 1 }}>
+                {ARENAS_LIST.map((arena, idx) => {
+                    const LandComp = arena.LandComponent
+                    const isEven = idx % 2 === 0
+                    const nextArena = idx < ARENAS_LIST.length - 1 ? ARENAS_LIST[idx + 1].card.title : null
+                    const accent = arena.card.accentColor
+                    const glow = arena.card.glowColor
 
-                            {/* Card + Button */}
-                            <div style={{
+                    return (
+                        <div
+                            key={arena.id}
+                            ref={(el) => { sectionRefs.current[idx] = el }}
+                            style={{
+                                minHeight: "100vh",
+                                width: "100%",
                                 display: "flex",
-                                flexDirection: "column",
                                 alignItems: "center",
-                                gap: "20px",
-                                width: "40%",
-                                maxWidth: "380px"
-                            }}>
-                                <ArenaCard
-                                    side={isEven ? "right" : "left"}
-                                    {...arena.card}
-                                    nextArena={nextArena}
-                                    width="100%"
-                                />
-                                <button style={{
-                                    background: "rgba(0,0,0,0.85)",
-                                    border: `1px solid ${accent}`,
-                                    borderRadius: "30px",
-                                    padding: "14px 32px",
-                                    color: "#ffffff",
-                                    fontFamily: "'Georgia', serif",
-                                    fontSize: "13px",
-                                    fontWeight: "bold",
-                                    letterSpacing: "2px",
-                                    cursor: "pointer",
-                                    textTransform: "uppercase",
-                                    boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
-                                    transition: "all 0.3s ease"
-                                }}>
-                                    {arena.btnText}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Section Divider */}
-                        {idx < ARENAS_LIST.length - 1 && (
+                                justifyContent: "center",
+                                padding: "40px 5%",
+                                boxSizing: "border-box",
+                                position: "relative"
+                            }}
+                        >
+                            {/* Per-section accent glow overlay (subtle, on top of interpolated bg) */}
                             <div style={{
                                 position: "absolute",
-                                bottom: 0,
-                                left: "10%",
-                                right: "10%",
-                                height: "1px",
-                                background: `linear-gradient(90deg, transparent, ${accent}44, transparent)`
+                                inset: 0,
+                                background: `radial-gradient(ellipse at ${isEven ? "30%" : "70%"} 50%, ${glow}18 0%, transparent 55%)`,
+                                pointerEvents: "none"
                             }} />
-                        )}
-                    </div>
-                )
-            })}
-        </div>
+
+                            <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "60px",
+                                width: "100%",
+                                maxWidth: "1200px",
+                                flexDirection: isEven ? "row" : "row-reverse",
+                                position: "relative",
+                                zIndex: 1
+                            }}>
+                                {/* 3D Canvas */}
+                                <div style={{
+                                    width: "55%",
+                                    maxWidth: "600px",
+                                    height: "500px",
+                                    position: "relative"
+                                }}>
+                                    <LazyCanvas camera={cameraConfig}>
+                                        {arena.lights()}
+                                        <Suspense fallback={null}>
+                                            <LandComp />
+                                        </Suspense>
+                                    </LazyCanvas>
+                                </div>
+
+                                {/* Card + Button */}
+                                <div style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gap: "20px",
+                                    width: "40%",
+                                    maxWidth: "380px"
+                                }}>
+                                    <ArenaCard
+                                        side={isEven ? "right" : "left"}
+                                        {...arena.card}
+                                        nextArena={nextArena}
+                                        width="100%"
+                                    />
+                                    <button style={{
+                                        background: "rgba(0,0,0,0.85)",
+                                        border: `1px solid ${accent}`,
+                                        borderRadius: "30px",
+                                        padding: "14px 32px",
+                                        color: "#ffffff",
+                                        fontFamily: "'Georgia', serif",
+                                        fontSize: "13px",
+                                        fontWeight: "bold",
+                                        letterSpacing: "2px",
+                                        cursor: "pointer",
+                                        textTransform: "uppercase",
+                                        boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
+                                        transition: "all 0.3s ease"
+                                    }}>
+                                        {arena.btnText}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Section Divider */}
+                            {idx < ARENAS_LIST.length - 1 && (
+                                <div style={{
+                                    position: "absolute",
+                                    bottom: 0,
+                                    left: "10%",
+                                    right: "10%",
+                                    height: "1px",
+                                    background: `linear-gradient(90deg, transparent, ${accent}44, transparent)`
+                                }} />
+                            )}
+                        </div>
+                    )
+                })}
+            </div>
+        </>
     )
 }
 
 // ─────────────────────────────────────────────────────────────────────
 // Carousel Layout — for tablets, mobiles, small screens (<1024px)
-// Uses a SINGLE Canvas to avoid WebGL context limits
+// Background crossfades smoothly on arena switch
 // ─────────────────────────────────────────────────────────────────────
 function CarouselLayout() {
     const [activeIdx, setActiveIdx] = useState(0)
@@ -428,6 +528,7 @@ function CarouselLayout() {
 
     const accent = currentArena.card.accentColor
     const glow = currentArena.card.glowColor
+    const bg = currentArena.card.bg
 
     return (
         <div
@@ -442,17 +543,17 @@ function CarouselLayout() {
                 justifyContent: "center",
                 padding: "16px",
                 boxSizing: "border-box",
-                background: `radial-gradient(circle at 50% 40%, ${glow}15 0%, #080808 75%)`,
-                transition: "background 0.8s ease",
+                background: buildGradient(bg),
+                transition: "background 0.6s ease",
                 overflowX: "hidden",
                 position: "relative"
             }}
         >
-            {/* Ambient glow */}
+            {/* Ambient accent glow overlay */}
             <div style={{
                 position: "absolute", inset: 0,
-                background: `radial-gradient(ellipse at 50% 50%, ${accent}22 0%, transparent 60%)`,
-                pointerEvents: "none", transition: "all 0.8s ease"
+                background: `radial-gradient(ellipse at 50% 40%, ${accent}22 0%, transparent 55%)`,
+                pointerEvents: "none", transition: "all 0.6s ease"
             }} />
 
             <div style={{
