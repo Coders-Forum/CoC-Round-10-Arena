@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Netlify serves from root '/' — no subpath needed
+// Relative base path support for GitHub Pages subpaths and Netlify root
 export default defineConfig({
-  base: '/',
+  base: './',
   plugins: [react()],
   build: {
     chunkSizeWarningLimit: 1000,
