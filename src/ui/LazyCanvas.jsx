@@ -2,16 +2,17 @@ import { useRef, useState, useEffect, Component } from "react"
 import { Canvas } from "@react-three/fiber"
 
 // ─────────────────────────────────────────────────────────────────────
-// Global WebGL Support Detection (runs once)
+// Safe WebGL Support Detection
 // ─────────────────────────────────────────────────────────────────────
 let _webglSupported = null
 function isWebGLSupported() {
     if (_webglSupported !== null) return _webglSupported
     try {
         const canvas = document.createElement("canvas")
-        const ctx = canvas.getContext("webgl2") || canvas.getContext("webgl") || canvas.getContext("experimental-webgl")
-        _webglSupported = !!ctx
-        if (ctx && ctx.getExtension) ctx.getExtension("WEBGL_lose_context")?.loseContext()
+        _webglSupported = !!(
+            window.WebGLRenderingContext &&
+            (canvas.getContext("webgl2") || canvas.getContext("webgl"))
+        )
     } catch (e) {
         _webglSupported = false
     }
@@ -19,10 +20,10 @@ function isWebGLSupported() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Global Active Context Counter — browsers cap at ~8-16 active WebGL contexts
+// Global Active Context Counter — keeps GPU context count safe across browsers
 // ─────────────────────────────────────────────────────────────────────
 let activeContextCount = 0
-const MAX_CONTEXTS = 6 // Conservative limit to prevent context exhaustion
+const MAX_CONTEXTS = 8
 
 // ─────────────────────────────────────────────────────────────────────
 // Error Boundary — catches synchronous React render errors from Canvas
@@ -33,18 +34,18 @@ class WebGLErrorBoundary extends Component {
         return { hasError: true }
     }
     componentDidCatch(error) {
-        console.warn("[WebGL] Renderer initialization warning:", error?.message || error)
+        console.warn("[WebGL] Canvas render warning:", error?.message || error)
     }
     render() {
         if (this.state.hasError) {
-            return <FallbackPlaceholder message="3D view unavailable" />
+            return <FallbackPlaceholder message="3D Arena View" />
         }
         return this.props.children
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Fallback Placeholder — shown when WebGL is unavailable or context limit hit
+// Fallback Placeholder
 // ─────────────────────────────────────────────────────────────────────
 function FallbackPlaceholder({ message = "3D Arena View" }) {
     return (
@@ -68,7 +69,7 @@ function FallbackPlaceholder({ message = "3D Arena View" }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// LazyCanvas — Lazy-mounted, context-limited WebGL canvas
+// LazyCanvas — Lazy-mounted 3D WebGL canvas
 // ─────────────────────────────────────────────────────────────────────
 export default function LazyCanvas({ children, style, camera, forceVisible = false, ...props }) {
     const containerRef = useRef()
@@ -76,7 +77,6 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
     const [contextLost, setContextLost] = useState(false)
     const [hasSlot, setHasSlot] = useState(false)
 
-    // IntersectionObserver: only consider mounting when near viewport
     useEffect(() => {
         if (forceVisible) {
             setInViewport(true)
@@ -86,14 +86,13 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
             ([entry]) => {
                 setInViewport(entry.isIntersecting)
             },
-            { rootMargin: "200px 0px" }
+            { rootMargin: "250px 0px" }
         )
 
         if (containerRef.current) observer.observe(containerRef.current)
         return () => observer.disconnect()
     }, [forceVisible])
 
-    // Context slot management: claim a slot when in viewport, release when leaving
     useEffect(() => {
         if (inViewport && !contextLost && activeContextCount < MAX_CONTEXTS) {
             activeContextCount++
@@ -107,11 +106,10 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
         }
     }, [inViewport, contextLost])
 
-    // Don't attempt Canvas at all if WebGL is unsupported
     if (!isWebGLSupported()) {
         return (
             <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
-                <FallbackPlaceholder message="WebGL not supported" />
+                <FallbackPlaceholder message="3D Arena View" />
             </div>
         )
     }
@@ -139,9 +137,8 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
                             if (canvasEl) {
                                 canvasEl.addEventListener("webglcontextlost", (e) => {
                                     e.preventDefault()
-                                    console.warn("[WebGL] Context lost, will attempt recovery...")
                                     setContextLost(true)
-                                    setTimeout(() => setContextLost(false), 2000)
+                                    setTimeout(() => setContextLost(false), 1500)
                                 }, false)
                             }
                         }}

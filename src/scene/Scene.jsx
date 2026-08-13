@@ -30,33 +30,10 @@ import NecroLand from "../lands/NecroLand.jsx"
 import PillarsLand from "../lands/PillarsLand.jsx"
 
 // ─────────────────────────────────────────────────────────────────────
-// Staggered model preloading
+// Light model preloading — loads initial arena only to save GPU memory
 // ─────────────────────────────────────────────────────────────────────
 const base = import.meta.env.BASE_URL
-const initialModels = ["volcano.glb", "snow_mountain.glb", "plant_island.glb", "Island.glb"]
-initialModels.forEach((m) => useGLTF.preload(`${base}models/${m}`))
-
-if (typeof window !== "undefined") {
-    const remainingModels = [
-        "Coliseum.glb", "Pyramid.glb", "Castle Fortress.glb", "Ruin.glb", "Mayan Temple.glb",
-        "Greek Temple.glb", "Pagoda.glb", "Pedestal.glb", "Cathedral.glb", "Japanese Torii.glb",
-        "Castle (1).glb", "Pagoda(2).glb", "Barracks.glb", "Palace.glb", "Torii Gate.glb",
-        "Mystic Tree.glb", "Dead Trees With Snow.glb", "Temple.glb", "Archway.glb",
-        "Necropolis walls V2.glb", "Cemetery scene.glb", "Column.glb"
-    ]
-    const schedulePreload = () => {
-        remainingModels.forEach((m, idx) => {
-            setTimeout(() => {
-                useGLTF.preload(`${base}models/${m}`)
-            }, idx * 100)
-        })
-    }
-    if ('requestIdleCallback' in window) {
-        requestIdleCallback(schedulePreload)
-    } else {
-        setTimeout(schedulePreload, 600)
-    }
-}
+useGLTF.preload(`${base}models/volcano.glb`)
 
 // ─────────────────────────────────────────────────────────────────────
 // Arena Data — 25 Updated Topics
