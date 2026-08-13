@@ -69,7 +69,7 @@ function FallbackPlaceholder({ message = "3D Arena View" }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// LazyCanvas — Lazy-mounted 3D WebGL canvas
+// LazyCanvas — Persistent DOM wrapper prevents "Node cannot be found" errors
 // ─────────────────────────────────────────────────────────────────────
 export default function LazyCanvas({ children, style, camera, forceVisible = false, ...props }) {
     const containerRef = useRef()
@@ -117,8 +117,9 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
     const shouldMount = (forceVisible || (inViewport && hasSlot)) && !contextLost
 
     return (
-        <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
-            {shouldMount ? (
+        <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative" }}>
+            {/* Stable persistent wrapper prevents removeChild race conditions */}
+            <div style={{ width: "100%", height: "100%", display: shouldMount ? "block" : "none" }}>
                 <WebGLErrorBoundary>
                     <Canvas
                         camera={camera}
@@ -135,11 +136,12 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
                         onCreated={({ gl }) => {
                             const canvasEl = gl.domElement
                             if (canvasEl) {
-                                canvasEl.addEventListener("webglcontextlost", (e) => {
+                                const handleContextLost = (e) => {
                                     e.preventDefault()
                                     setContextLost(true)
                                     setTimeout(() => setContextLost(false), 1500)
-                                }, false)
+                                }
+                                canvasEl.addEventListener("webglcontextlost", handleContextLost, false)
                             }
                         }}
                         style={{ background: "transparent" }}
@@ -148,7 +150,9 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
                         {children}
                     </Canvas>
                 </WebGLErrorBoundary>
-            ) : (
+            </div>
+
+            {!shouldMount && (
                 inViewport && !hasSlot && !contextLost
                     ? <FallbackPlaceholder message="Loading 3D..." />
                     : null

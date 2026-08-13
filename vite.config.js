@@ -6,10 +6,10 @@ const securityHeaders = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data: https://www.gstatic.com; worker-src 'self' blob: https://www.gstatic.com; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://www.gstatic.com 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data: https://www.gstatic.com; worker-src 'self' blob: https://www.gstatic.com; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
 }
 
-// Optimized Vite build configuration with HTTP security headers
+// Optimized Vite build configuration with WebAssembly CSP & HTTP security headers
 export default defineConfig({
   base: './',
   plugins: [react()],
