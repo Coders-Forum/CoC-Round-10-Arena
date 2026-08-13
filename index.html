@@ -5,20 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="./vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Security Headers -->
+    <!-- Security Meta Tags (HTML-valid meta directives only) -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta http-equiv="X-Frame-Options" content="DENY" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
+      script-src 'self' 'unsafe-inline' blob: https://www.gstatic.com;
       style-src 'self' 'unsafe-inline';
       img-src 'self' data: blob:;
       font-src 'self' data:;
-      connect-src 'self' blob: data:;
-      worker-src 'self' blob:;
+      connect-src 'self' blob: data: https://www.gstatic.com;
+      worker-src 'self' blob: https://www.gstatic.com;
       child-src 'self' blob:;
-      frame-ancestors 'none';
       base-uri 'self';
       form-action 'self';
     " />

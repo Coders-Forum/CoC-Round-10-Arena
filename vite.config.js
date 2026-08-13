@@ -1,10 +1,24 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Optimized Vite build configuration for high performance & fast loading
+const securityHeaders = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data: https://www.gstatic.com; worker-src 'self' blob: https://www.gstatic.com; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+}
+
+// Optimized Vite build configuration with HTTP security headers
 export default defineConfig({
   base: './',
   plugins: [react()],
+  server: {
+    headers: securityHeaders
+  },
+  preview: {
+    headers: securityHeaders
+  },
   build: {
     target: 'es2020',
     minify: 'esbuild',
