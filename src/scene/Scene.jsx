@@ -534,6 +534,12 @@ function CarouselLayout() {
                     ))}
                 </div>
             </div>
+
+            <ScrollToTop
+                isCarousel={true}
+                activeIdx={activeIdx}
+                onResetCarousel={() => setActiveIdx(0)}
+            />
         </div>
     )
 }
@@ -554,9 +560,12 @@ export default function Scene() {
         return () => mq.removeEventListener("change", handler)
     }, [])
 
+    if (isSmallScreen) {
+        return <CarouselLayout />
+    }
     return (
         <>
-            {isSmallScreen ? <CarouselLayout /> : <DesktopScrollLayout />}
+            <DesktopScrollLayout />
             <ScrollToTop />
         </>
     )
