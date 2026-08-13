@@ -364,7 +364,7 @@ function DesktopScrollLayout() {
                                         borderRadius: "30px",
                                         padding: "14px 32px",
                                         color: "#ffffff",
-                                        fontFamily: "'Georgia', serif",
+                                        fontFamily: "'Clash Display', sans-serif",
                                         fontSize: "13px",
                                         fontWeight: "bold",
                                         letterSpacing: "2px",
@@ -469,7 +469,7 @@ function CarouselLayout() {
                     }}>❮ PREV</button>
 
                     <div style={{
-                        color: "#fff", fontFamily: "'Georgia', serif",
+                        color: "#fff", fontFamily: "'Clash Display', sans-serif",
                         fontSize: "13px", fontWeight: "bold", letterSpacing: "2px",
                         textShadow: `0 0 10px ${glow}88`
                     }}>ARENA {activeIdx + 1} / {ARENAS_LIST.length}</div>
@@ -505,7 +505,7 @@ function CarouselLayout() {
                     <button style={{
                         background: "rgba(0,0,0,0.85)", border: `1px solid ${accent}`,
                         borderRadius: "30px", padding: "12px 28px", color: "#fff",
-                        fontFamily: "'Georgia', serif", fontSize: "12px", fontWeight: "bold",
+                        fontFamily: "'Clash Display', sans-serif", fontSize: "12px", fontWeight: "bold",
                         letterSpacing: "2px", cursor: "pointer", textTransform: "uppercase",
                         boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
                         transition: "all 0.3s ease"
