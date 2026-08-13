@@ -13,6 +13,7 @@ import GreekTemple from "../lands/GreekTemple.jsx"
 import LazyCanvas from "../ui/LazyCanvas.jsx"
 import ArenaCard from "../ui/ArenaCard.jsx"
 import DynamicBackground from "../ui/DynamicBackground.jsx"
+import ScrollToTop from "../ui/ScrollToTop.jsx"
 import PagodaLand from "../lands/PagodaLand.jsx"
 import PedestalLand from "../lands/PedestalLand.jsx"
 import CathedralLand from "../lands/CathedralLand.jsx"
@@ -553,8 +554,10 @@ export default function Scene() {
         return () => mq.removeEventListener("change", handler)
     }, [])
 
-    if (isSmallScreen) {
-        return <CarouselLayout />
-    }
-    return <DesktopScrollLayout />
+    return (
+        <>
+            {isSmallScreen ? <CarouselLayout /> : <DesktopScrollLayout />}
+            <ScrollToTop />
+        </>
+    )
 }

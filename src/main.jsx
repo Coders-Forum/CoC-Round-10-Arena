@@ -4,8 +4,9 @@ import { useGLTF } from '@react-three/drei'
 import './index.css'
 import App from './App.jsx'
 
-// Required to decode Draco-compressed GLB models
-useGLTF.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/')
+// Serve Draco decoders locally to prevent cross-origin/privacy-shield blocks in Edge, Ulaa, Brave & Safari
+const base = import.meta.env.BASE_URL || './'
+useGLTF.setDecoderPath(`${base}draco/`)
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

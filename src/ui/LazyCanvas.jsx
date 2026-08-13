@@ -7,7 +7,7 @@ class WebGLErrorBoundary extends Component {
         return { hasError: true }
     }
     componentDidCatch(error) {
-        console.warn("WebGL context failed to initialize:", error)
+        console.warn("[WebGL] Renderer initialization warning:", error)
     }
     render() {
         if (this.state.hasError) {
@@ -40,7 +40,7 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
             ([entry]) => {
                 setVisible(entry.isIntersecting)
             },
-            { rootMargin: "150px 0px" } // Only mount when close to viewport to save WebGL contexts
+            { rootMargin: "200px 0px" } // Mount canvas 200px before scrolling into view to ensure instant rendering
         )
 
         if (containerRef.current) observer.observe(containerRef.current)
@@ -55,11 +55,13 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
                 <WebGLErrorBoundary>
                     <Canvas
                         camera={camera}
-                        dpr={[1, 1]}
+                        dpr={[1, 1.5]}
                         gl={{
                             antialias: false,
-                            powerPreference: "low-power",
+                            powerPreference: "default",
                             alpha: true,
+                            stencil: false,
+                            depth: true,
                             failIfMajorPerformanceCaveat: false,
                             preserveDrawingBuffer: false
                         }}
@@ -69,8 +71,7 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
                                 canvasEl.addEventListener("webglcontextlost", (e) => {
                                     e.preventDefault()
                                     setContextLost(true)
-                                    // Try recovering context after brief delay
-                                    setTimeout(() => setContextLost(false), 1000)
+                                    setTimeout(() => setContextLost(false), 800)
                                 }, false)
                             }
                         }}
@@ -83,4 +84,4 @@ export default function LazyCanvas({ children, style, camera, forceVisible = fal
             )}
         </div>
     )
-}
+}
