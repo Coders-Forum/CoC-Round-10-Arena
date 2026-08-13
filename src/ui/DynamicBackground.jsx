@@ -58,7 +58,7 @@ export default function DynamicBackground({ activeLandId = "volcano" }) {
                     willChange: "opacity"
                 }}
             >
-                <img src={srcA} alt="" onError={handleImgError} style={{ display: "none" }} />
+                <img src={srcA} alt="" decoding="async" loading="lazy" fetchpriority="low" onError={handleImgError} style={{ display: "none" }} />
             </div>
 
             {/* Background Layer B */}
@@ -75,7 +75,7 @@ export default function DynamicBackground({ activeLandId = "volcano" }) {
                     willChange: "opacity"
                 }}
             >
-                <img src={srcB} alt="" onError={handleImgError} style={{ display: "none" }} />
+                <img src={srcB} alt="" decoding="async" loading="lazy" fetchpriority="low" onError={handleImgError} style={{ display: "none" }} />
             </div>
 
             {/* Dark Cinematic Vignette Overlay to maintain 3D model & UI focus */}
