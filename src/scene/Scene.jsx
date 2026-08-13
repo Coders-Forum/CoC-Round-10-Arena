@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect, useRef, useCallback } from "react"
+import { Suspense, useState, useEffect, useRef } from "react"
 import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
@@ -245,48 +245,38 @@ const ARENAS_LIST = [
 const CAROUSEL_BREAKPOINT = 1024
 
 // ─────────────────────────────────────────────────────────────────────
-// Desktop Scroll Layout — with dynamic background layer
+// Desktop Scroll Layout — with IntersectionObserver background switching
 // ─────────────────────────────────────────────────────────────────────
 function DesktopScrollLayout() {
     const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
     const sectionRefs = useRef([])
     const [activeLandIdx, setActiveLandIdx] = useState(0)
-    const rafRef = useRef(null)
-
-    const updateActiveLand = useCallback(() => {
-        const sections = sectionRefs.current
-        if (sections.length === 0) return
-
-        const viewportCenter = window.innerHeight / 2
-        let closestIdx = 0
-        let closestDist = Infinity
-
-        for (let i = 0; i < sections.length; i++) {
-            if (!sections[i]) continue
-            const rect = sections[i].getBoundingClientRect()
-            const sectionCenter = rect.top + rect.height / 2
-            const dist = Math.abs(sectionCenter - viewportCenter)
-            if (dist < closestDist) {
-                closestDist = dist
-                closestIdx = i
-            }
-        }
-
-        setActiveLandIdx(closestIdx)
-    }, [])
 
     useEffect(() => {
-        const onScroll = () => {
-            if (rafRef.current) cancelAnimationFrame(rafRef.current)
-            rafRef.current = requestAnimationFrame(updateActiveLand)
-        }
-        window.addEventListener("scroll", onScroll, { passive: true })
-        updateActiveLand()
-        return () => {
-            window.removeEventListener("scroll", onScroll)
-            if (rafRef.current) cancelAnimationFrame(rafRef.current)
-        }
-    }, [updateActiveLand])
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const index = Number(entry.target.getAttribute("data-index"))
+                        if (!isNaN(index)) {
+                            setActiveLandIdx(index)
+                        }
+                    }
+                })
+            },
+            {
+                root: null,
+                rootMargin: "-25% 0px -25% 0px", // Triggers active land change as section enters middle 50% of screen
+                threshold: 0.15
+            }
+        )
+
+        sectionRefs.current.forEach((el) => {
+            if (el) observer.observe(el)
+        })
+
+        return () => observer.disconnect()
+    }, [])
 
     const currentLandId = ARENAS_LIST[activeLandIdx]?.id || "volcano"
 
@@ -306,6 +296,7 @@ function DesktopScrollLayout() {
                     return (
                         <div
                             key={arena.id}
+                            data-index={idx}
                             ref={(el) => { sectionRefs.current[idx] = el }}
                             style={{
                                 minHeight: "100vh",

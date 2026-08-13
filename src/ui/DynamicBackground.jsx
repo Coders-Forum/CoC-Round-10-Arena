@@ -4,53 +4,32 @@ import AtmosphericEffects from "./AtmosphericEffects.jsx"
 
 export default function DynamicBackground({ activeLandId = "volcano" }) {
     const bgConfig = getLandBackground(activeLandId)
+    const targetImage = bgConfig.image || DEFAULT_BACKGROUND
 
-    // Manage current & previous background for 1.2s smooth crossfade
-    const [currSrc, setCurrSrc] = useState(bgConfig.image)
-    const [prevSrc, setPrevSrc] = useState(null)
-    const [isCrossfading, setIsCrossfading] = useState(false)
-    const [currFailed, setCurrFailed] = useState(false)
-    const [prevFailed, setPrevFailed] = useState(false)
+    // Dual-layer crossfade state for smooth 1.5s image transition
+    const [srcA, setSrcA] = useState(targetImage)
+    const [srcB, setSrcB] = useState(targetImage)
+    const [activeLayer, setActiveLayer] = useState("A") // "A" = Layer A visible, "B" = Layer B visible
 
-    const isFirstRender = useRef(true)
+    const prevTargetRef = useRef(targetImage)
 
     useEffect(() => {
-        const targetSrc = bgConfig.image
+        if (targetImage === prevTargetRef.current) return
+        prevTargetRef.current = targetImage
 
-        if (isFirstRender.current) {
-            isFirstRender.current = false
-            setCurrSrc(targetSrc)
-            return
+        if (activeLayer === "A") {
+            setSrcB(targetImage)
+            setActiveLayer("B")
+        } else {
+            setSrcA(targetImage)
+            setActiveLayer("A")
         }
+    }, [targetImage, activeLayer])
 
-        if (targetSrc !== currSrc) {
-            setPrevSrc(currSrc)
-            setCurrSrc(targetSrc)
-            setCurrFailed(false)
-            setIsCrossfading(true)
-
-            const timer = setTimeout(() => {
-                setIsCrossfading(false)
-                setPrevSrc(null)
-            }, 1200)
-
-            return () => clearTimeout(timer)
-        }
-    }, [activeLandId, bgConfig.image, currSrc])
-
-    // Preload image & fallback if main fails
-    const handleCurrError = () => {
-        if (!currFailed && currSrc !== DEFAULT_BACKGROUND) {
-            console.warn(`[DynamicBackground] Failed to load ${currSrc}, falling back to ${DEFAULT_BACKGROUND}`)
-            setCurrFailed(true)
-            setCurrSrc(DEFAULT_BACKGROUND)
-        }
-    }
-
-    const handlePrevError = () => {
-        if (!prevFailed && prevSrc !== DEFAULT_BACKGROUND) {
-            setPrevFailed(true)
-            setPrevSrc(DEFAULT_BACKGROUND)
+    const handleImgError = (e) => {
+        if (e.target.src !== DEFAULT_BACKGROUND) {
+            console.warn(`[DynamicBackground] Failed to load image, using default fallback`)
+            e.target.src = DEFAULT_BACKGROUND
         }
     }
 
@@ -65,50 +44,38 @@ export default function DynamicBackground({ activeLandId = "volcano" }) {
                 background: "#08080a"
             }}
         >
-            {/* Previous Background Layer (Crossfading out) */}
-            {prevSrc && (
-                <div
-                    style={{
-                        position: "absolute",
-                        inset: 0,
-                        backgroundImage: `url("${prevSrc}")`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center center",
-                        backgroundRepeat: "no-repeat",
-                        opacity: isCrossfading ? 0 : 1,
-                        transition: "opacity 1.2s ease-in-out",
-                        willChange: "opacity"
-                    }}
-                >
-                    <img
-                        src={prevSrc}
-                        alt=""
-                        onError={handlePrevError}
-                        style={{ display: "none" }}
-                    />
-                </div>
-            )}
-
-            {/* Current Active Background Layer (Crossfading in) */}
+            {/* Background Layer A */}
             <div
                 style={{
                     position: "absolute",
                     inset: 0,
-                    backgroundImage: `url("${currSrc}")`,
+                    backgroundImage: `url("${srcA}")`,
                     backgroundSize: "cover",
                     backgroundPosition: "center center",
                     backgroundRepeat: "no-repeat",
-                    opacity: isCrossfading ? 1 : 1,
-                    transition: "opacity 1.2s ease-in-out",
+                    opacity: activeLayer === "A" ? 1 : 0,
+                    transition: "opacity 1.5s ease-in-out",
                     willChange: "opacity"
                 }}
             >
-                <img
-                    src={currSrc}
-                    alt=""
-                    onError={handleCurrError}
-                    style={{ display: "none" }}
-                />
+                <img src={srcA} alt="" onError={handleImgError} style={{ display: "none" }} />
+            </div>
+
+            {/* Background Layer B */}
+            <div
+                style={{
+                    position: "absolute",
+                    inset: 0,
+                    backgroundImage: `url("${srcB}")`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center center",
+                    backgroundRepeat: "no-repeat",
+                    opacity: activeLayer === "B" ? 1 : 0,
+                    transition: "opacity 1.5s ease-in-out",
+                    willChange: "opacity"
+                }}
+            >
+                <img src={srcB} alt="" onError={handleImgError} style={{ display: "none" }} />
             </div>
 
             {/* Dark Cinematic Vignette Overlay to maintain 3D model & UI focus */}
@@ -116,7 +83,7 @@ export default function DynamicBackground({ activeLandId = "volcano" }) {
                 style={{
                     position: "absolute",
                     inset: 0,
-                    background: `radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.70) 75%, rgba(0,0,0,0.90) 100%)`,
+                    background: `radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.65) 75%, rgba(0,0,0,0.88) 100%)`,
                     pointerEvents: "none",
                     zIndex: 1
                 }}
