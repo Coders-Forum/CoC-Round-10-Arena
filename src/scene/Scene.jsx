@@ -1,4 +1,6 @@
 import { Suspense, useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
+import { clearSession } from "../utils/sessionSecurity.js"
 import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
@@ -430,7 +432,7 @@ function CarouselLayout() {
             <div style={{
                 width: "100%", maxWidth: "600px",
                 display: "flex", flexDirection: "column", alignItems: "center",
-                zIndex: 2, position: "relative", gap: "16px"
+                zIndex: 2, position: "relative", gap: "16px", marginTop: "32px"
             }}>
                 {/* Navigation */}
                 <div style={{
@@ -521,6 +523,12 @@ export default function Scene() {
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < CAROUSEL_BREAKPOINT : false
     )
+    const navigate = useNavigate()
+
+    const handleLogout = () => {
+        clearSession()
+        navigate("/", { state: { reason: "logout" } })
+    }
 
     useEffect(() => {
         const mq = window.matchMedia(`(max-width: ${CAROUSEL_BREAKPOINT - 1}px)`)
@@ -530,8 +538,86 @@ export default function Scene() {
         return () => mq.removeEventListener("change", handler)
     }, [])
 
-    if (isSmallScreen) {
-        return <CarouselLayout />
-    }
-    return <DesktopScrollLayout />
+    return (
+        <>
+            {/* Unified Fixed Top Header with Clean Logout for Both Desktop and Mobile */}
+            <header style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 1000,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: isSmallScreen ? "12px 18px" : "14px 32px",
+                background: "linear-gradient(180deg, rgba(17,24,39,0.85) 0%, rgba(17,24,39,0.3) 70%, transparent 100%)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                fontFamily: "'Clash', 'Clash Display', sans-serif",
+                pointerEvents: "auto"
+            }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{
+                        background: "#FFC451",
+                        color: "#000",
+                        fontSize: "10px",
+                        fontWeight: "800",
+                        padding: "3px 10px",
+                        borderRadius: "100px",
+                        letterSpacing: "0.15em",
+                        boxShadow: "0 0 12px rgba(255,196,81,0.35)"
+                    }}>
+                        COC
+                    </span>
+                    <span style={{
+                        color: "#FFC451",
+                        fontSize: "13px",
+                        fontWeight: "700",
+                        letterSpacing: "0.2em",
+                        textShadow: "0 0 16px rgba(255,196,81,0.25)"
+                    }}>
+                        3D ARENA
+                    </span>
+                </div>
+
+                <button
+                    onClick={handleLogout}
+                    title="Logout from arena"
+                    aria-label="Logout"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: "rgba(0,0,0,0.5)",
+                        border: "1px solid rgba(255,196,81,0.25)",
+                        color: "#FFC451",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        letterSpacing: "0.12em",
+                        padding: "6px 14px",
+                        borderRadius: "100px",
+                        cursor: "pointer",
+                        transition: "all 0.25s ease",
+                        boxShadow: "0 2px 10px rgba(0,0,0,0.4)"
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#DC2626"
+                        e.currentTarget.style.background = "rgba(220,38,38,0.25)"
+                        e.currentTarget.style.boxShadow = "0 0 15px rgba(220,38,38,0.35)"
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(255,196,81,0.25)"
+                        e.currentTarget.style.background = "rgba(0,0,0,0.5)"
+                        e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.4)"
+                    }}
+                >
+                    <span style={{ fontSize: "12px", opacity: 0.85 }}>🚪</span>
+                    <span>LOGOUT</span>
+                </button>
+            </header>
+
+            {isSmallScreen ? <CarouselLayout /> : <DesktopScrollLayout />}
+        </>
+    )
 }

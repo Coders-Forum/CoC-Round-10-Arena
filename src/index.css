@@ -1,3 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+    font-family: 'Clash';
+    src: url('/fonts/ClashDisplay-Regular.woff2') format('woff2');
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 @font-face {
     font-family: 'Clash Display';
     src: url('/fonts/ClashDisplay-Regular.woff2') format('woff2');
@@ -9,17 +21,11 @@
 html, body {
     margin: 0;
     padding: 0;
-    height: 100%;
     width: 100%;
-    font-family: 'Clash Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100%;
+    background: #111827;
+    font-family: 'Clash', 'Clash Display', sans-serif;
     overflow-x: hidden;
-    overflow-y: auto;
-    background:
-            radial-gradient(ellipse at 10% 5%, #1a1200 0%, transparent 55%),
-            radial-gradient(ellipse at 90% 95%, #0a0f0a 0%, transparent 55%),
-            radial-gradient(ellipse at 0% 0%, #1f0a00 0%, transparent 45%),
-            radial-gradient(ellipse at 100% 100%, #050f14 0%, transparent 45%),
-            linear-gradient(160deg, #0d0a00 0%, #080808 50%, #0a0d08 100%);
 }
 
 #root {
@@ -27,32 +33,6 @@ html, body {
     padding: 0;
     width: 100%;
     min-height: 100%;
-}
-
-#root::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: linear-gradient(
-            135deg,
-            transparent 32%,
-            #1a0f00 42%,
-            #a06800 47%,
-            #e8c84a 49.5%,
-            #a06800 52%,
-            #1a0f00 57%,
-            transparent 65%
-    );
-    opacity: 0;
-    animation: fireflyGlow 3.5s ease-in-out infinite;
-    pointer-events: none;
-    z-index: 0;
-}
-
-@keyframes fireflyGlow {
-    0%   { opacity: 0; }
-    50%  { opacity: 0.35; }
-    100% { opacity: 0; }
 }
 
 * {

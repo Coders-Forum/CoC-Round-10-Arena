@@ -14,7 +14,7 @@
       style-src 'self' 'unsafe-inline';
       img-src 'self' data: blob:;
       font-src 'self' data:;
-      connect-src 'self' blob: data: https://www.gstatic.com;
+      connect-src 'self' blob: data: https://www.gstatic.com http://localhost:5000 http://127.0.0.1:5000 ws://localhost:* ws://127.0.0.1:*;
       worker-src 'self' blob: https://www.gstatic.com;
       child-src 'self' blob:;
       base-uri 'self';
