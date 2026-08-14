@@ -302,18 +302,22 @@ export default function Login() {
   const handleChange = useCallback(
     (e) => {
       const { name, value } = e.target;
-      const cleaned = sanitize(value);
-      if (isThreat(cleaned)) {
-        setErrors((p) => ({ ...p, [name]: "Invalid characters detected." }));
-        return;
-      }
-      setForm((p) => ({ ...p, [name]: cleaned }));
-      if (touched[name]) {
-        const err =
-          name === "username"
-            ? validateUsername(cleaned)
-            : validatePassword(cleaned);
-        setErrors((p) => ({ ...p, [name]: err }));
+      if (name === "username") {
+        const cleaned = sanitize(value);
+        if (isThreat(cleaned)) {
+          setErrors((p) => ({ ...p, username: "Invalid characters detected." }));
+          return;
+        }
+        setForm((p) => ({ ...p, username: cleaned }));
+        if (touched.username) {
+          setErrors((p) => ({ ...p, username: validateUsername(cleaned) }));
+        }
+      } else {
+        // Do not sanitize passwords (preserves full special character set)
+        setForm((p) => ({ ...p, password: value }));
+        if (touched.password) {
+          setErrors((p) => ({ ...p, password: validatePassword(value) }));
+        }
       }
     },
     [touched],
@@ -339,11 +343,11 @@ export default function Login() {
       }));
       return;
     }
-    if (isThreat(pasted)) {
+    if (e.target.name === "username" && isThreat(pasted)) {
       e.preventDefault();
       setErrors((p) => ({
         ...p,
-        [e.target.name]: "Pasted content contains invalid characters.",
+        username: "Pasted content contains invalid characters.",
       }));
     }
   }, []);
@@ -365,8 +369,8 @@ export default function Login() {
     setErrors({ username: usernameErr, password: passwordErr });
     setTouched({ username: true, password: true });
     if (usernameErr || passwordErr) return;
-    if (isThreat(form.username) || isThreat(form.password)) {
-      setStatusMsg("Invalid input detected.");
+    if (isThreat(form.username)) {
+      setStatusMsg("Invalid characters detected in username.");
       setStage("error");
       return;
     }
@@ -435,9 +439,10 @@ export default function Login() {
           }, 1000);
         } else {
           const left = MAX_ATTEMPTS - attempts;
+          const serverMsg = data?.message || "Invalid username or password.";
           setStatusMsg(
             left > 0
-              ? `Invalid username or password. ${left} attempt${left !== 1 ? "s" : ""} remaining.`
+              ? `${serverMsg} (${left} attempt${left !== 1 ? "s" : ""} remaining)`
               : "Too many failed attempts. Please wait.",
           );
         }

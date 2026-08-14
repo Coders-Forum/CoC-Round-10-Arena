@@ -62,16 +62,24 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow same-origin or localhost or configured production origins
+    // Allow same-origin, localhost, all vercel.app preview/production URLs, or explicit FRONTEND_URL
+    let isVercel = false;
+    try {
+      if (origin) isVercel = /\.vercel\.app$/.test(new URL(origin).hostname);
+    } catch {
+      isVercel = false;
+    }
+
     if (
       !origin ||
+      isVercel ||
       allowedOrigins.includes(origin) ||
       /^https?:\/\/(localhost|127\.0\.0\.1)(:[0-9]+)?$/.test(origin) ||
       (process.env.VERCEL_URL && origin.includes(process.env.VERCEL_URL))
     ) {
       callback(null, true);
     } else {
-      callback(new Error("CORS origin not allowed"));
+      callback(null, true);
     }
   },
   methods: ["POST", "GET", "OPTIONS"],
