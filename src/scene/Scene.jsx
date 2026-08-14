@@ -1,4 +1,6 @@
 import { Suspense, useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
+import { clearSession } from "../utils/sessionSecurity.js"
 import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
@@ -12,6 +14,7 @@ import MayanTemple from "../lands/MayanTemple.jsx"
 import GreekTemple from "../lands/GreekTemple.jsx"
 import LazyCanvas from "../ui/LazyCanvas.jsx"
 import ArenaCard from "../ui/ArenaCard.jsx"
+import DynamicBackground from "../ui/DynamicBackground.jsx"
 import PagodaLand from "../lands/PagodaLand.jsx"
 import PedestalLand from "../lands/PedestalLand.jsx"
 import CathedralLand from "../lands/CathedralLand.jsx"
@@ -28,376 +31,353 @@ import CemeteryLand from "../lands/CemeteryLand.jsx"
 import NecroLand from "../lands/NecroLand.jsx"
 import PillarsLand from "../lands/PillarsLand.jsx"
 
-// Staggered model preloading
+// ─────────────────────────────────────────────────────────────────────
+// Light model preloading — loads initial arena only to save GPU memory
+// ─────────────────────────────────────────────────────────────────────
 const base = import.meta.env.BASE_URL
-const initialModels = ["volcano.glb", "snow_mountain.glb", "plant_island.glb", "Island.glb"]
-initialModels.forEach((m) => useGLTF.preload(`${base}models/${m}`))
+useGLTF.preload(`${base}models/volcano.glb`)
 
-if (typeof window !== "undefined") {
-    const remainingModels = [
-        "Coliseum.glb", "Pyramid.glb", "Castle Fortress.glb", "Ruin.glb", "Mayan Temple.glb",
-        "Greek Temple.glb", "Pagoda.glb", "Pedestal.glb", "Cathedral.glb", "Japanese Torii.glb",
-        "Castle (1).glb", "Pagoda(2).glb", "Barracks.glb", "Palace.glb", "Torii Gate.glb",
-        "Mystic Tree.glb", "Dead Trees With Snow.glb", "Temple.glb", "Archway.glb",
-        "Necropolis walls V2.glb", "Cemetery scene.glb", "Column.glb"
-    ]
-    const schedulePreload = () => {
-        remainingModels.forEach((m, idx) => {
-            setTimeout(() => {
-                useGLTF.preload(`${base}models/${m}`)
-            }, idx * 100)
-        })
-    }
-    if ('requestIdleCallback' in window) {
-        requestIdleCallback(schedulePreload)
-    } else {
-        setTimeout(schedulePreload, 600)
-    }
-}
-
+// ─────────────────────────────────────────────────────────────────────
+// Arena Data — 25 Updated Topics
+// ─────────────────────────────────────────────────────────────────────
 const cards = {
     volcano: {
-        accentColor: "#ff4500",
-        glowColor: "#ff2200",
-        subtitle: "Difficulty: Inferno",
-        title: "Volcano Arena",
-        description: "Survive the molten battlefield. Lava flows split the arena as debris rains from above. Only the sharpest minds conquer the fire.",
-        tags: ["Extreme", "String Matching", "Most Difficult"]
+        accentColor: "#ff4500", glowColor: "#ff2200",
+        subtitle: "Topic 01: Contiguous Memory", title: "Array Realm",
+        description: "Master linear data structures. Traverse indexed elements, search in O(1) random access time, and solve foundational contiguous memory challenges.",
+        tags: ["Easy / Medium", "Arrays", "Contiguous"]
     },
     snow: {
-        accentColor: "#88ccff",
-        glowColor: "#aaddff",
-        subtitle: "Difficulty: Blizzard",
-        title: "Frozen Peaks",
-        description: "Battle through icy tundra where every move is calculated. Algorithms freeze mid-execution in the cold of the north.",
-        tags: ["Hard", "Dynamic Programming", "Ice Cold"]
+        accentColor: "#88ccff", glowColor: "#aaddff",
+        subtitle: "Topic 02: Pattern Matching", title: "String Sanctum",
+        description: "Process sequences of characters. Solve palindrome checks, anagrams, substring searches, and text parsing algorithms.",
+        tags: ["Easy / Medium", "Strings", "Parsing"]
     },
     plant: {
-        accentColor: "#44cc44",
-        glowColor: "#22aa00",
-        subtitle: "Difficulty: Overgrowth",
-        title: "Jungle Isle",
-        description: "Navigate through tangled trees and dense undergrowth. Graph traversal comes alive in the wild jungle maze.",
-        tags: ["Medium", "Graph Theory", "Survival"]
+        accentColor: "#44cc44", glowColor: "#22aa00",
+        subtitle: "Topic 03: Fast Lookups", title: "Hash Table Isle",
+        description: "Harness O(1) average-time complexity lookups. Store key-value pairs, detect duplicates, and solve instant element mapping problems.",
+        tags: ["Medium", "Hash Maps", "Constant Time"]
     },
     island: {
-        accentColor: "#00ccff",
-        glowColor: "#00aadd",
-        subtitle: "Difficulty: Tidal",
-        title: "Island Shores",
-        description: "Waves crash as you race against the tide. Greedy algorithms and optimal paths decide who reaches the shore first.",
-        tags: ["Medium", "Greedy", "Time Attack"]
+        accentColor: "#00ccff", glowColor: "#00aadd",
+        subtitle: "Topic 04: Numerical Logic", title: "Math Arena",
+        description: "Apply number theory, prime factorization, GCD, modulo arithmetic, and fast exponentiation to solve core numerical problems.",
+        tags: ["Easy / Medium", "Mathematics", "Number Theory"]
     },
     coliseum: {
-        accentColor: "#c0d0ff",
-        glowColor: "#8899dd",
-        subtitle: "Difficulty: Gladiator",
-        title: "The Coliseum",
-        description: "Enter the grand arena. Face opponents in head-to-head algorithmic combat. Only the most efficient solution wins the crowd.",
-        tags: ["Hard", "Sorting", "Combat"]
+        accentColor: "#c0d0ff", glowColor: "#8899dd",
+        subtitle: "Topic 05: Order & Ranking", title: "Sorting Coliseum",
+        description: "Order raw data efficiently using QuickSort, MergeSort, and HeapSort. Understand comparative ranking and algorithmic efficiency.",
+        tags: ["Medium", "Sorting", "O(N log N)"]
     },
     pyramid: {
-        accentColor: "#ffaa00",
-        glowColor: "#ff8800",
-        subtitle: "Difficulty: Ancient",
-        title: "Desert Pyramid",
-        description: "Unlock the secrets buried deep within. Recursive descent into the pyramid reveals hidden patterns and ancient logic.",
-        tags: ["Hard", "Recursion", "Hidden Path"]
+        accentColor: "#ffaa00", glowColor: "#ff8800",
+        subtitle: "Topic 06: Binary Search", title: "Searching Pyramid",
+        description: "Divide and conquer ordered search spaces in O(log N) logarithmic time. Find lower bounds, upper bounds, and optimal answers.",
+        tags: ["Medium", "Binary Search", "O(log N)"]
     },
     castle: {
-        accentColor: "#9988cc",
-        glowColor: "#6655aa",
-        subtitle: "Difficulty: Siege",
-        title: "Castle Fortress",
-        description: "Storm the fortress walls. Defensive data structures crumble under optimized attacks. Break through every layer.",
-        tags: ["Expert", "Trees & Graphs", "Siege"]
+        accentColor: "#9988cc", glowColor: "#6655aa",
+        subtitle: "Topic 07: Depth-First Search", title: "DFS Fortress",
+        description: "Explore deep into trees and graphs before backtracking. Solve connected components, cycle detection, and topological sorting.",
+        tags: ["Hard", "Graph DFS", "Recursion"]
     },
     ruin: {
-        accentColor: "#88aa44",
-        glowColor: "#446622",
-        subtitle: "Difficulty: Forgotten",
-        title: "Ancient Ruins",
-        description: "Decipher the crumbling code of a lost civilization. Fragment reassembly and pattern reconstruction await the brave.",
-        tags: ["Medium", "Pattern Match", "Exploration"]
+        accentColor: "#88aa44", glowColor: "#446622",
+        subtitle: "Topic 08: Breadth-First Search", title: "BFS Ruins",
+        description: "Traverse graphs layer by layer using queues. Find the shortest path in unweighted networks and explore level-order trees.",
+        tags: ["Medium / Hard", "Graph BFS", "Shortest Path"]
     },
     mayan: {
-        accentColor: "#cc8833",
-        glowColor: "#aa6611",
-        subtitle: "Difficulty: Sacred",
-        title: "Mayan Temple",
-        description: "Climb the sacred steps to algorithmic enlightenment. Each tier harder than the last. Only the worthy reach the apex.",
-        tags: ["Expert", "DP + Backtrack", "Sacred"]
+        accentColor: "#cc8833", glowColor: "#aa6611",
+        subtitle: "Topic 09: SQL & Relations", title: "Database Temple",
+        description: "Query structured data with precision. Master joins, indexing, aggregation, subqueries, and relational schema optimization.",
+        tags: ["Medium", "SQL", "Database Engine"]
     },
     greek: {
-        accentColor: "#fff8ee",
-        glowColor: "#ddcc99",
-        subtitle: "Difficulty: Olympian",
-        title: "Greek Temple",
-        description: "Compete under the eyes of the gods. Pure logic, elegant solutions, and mathematical precision define the Olympian coder.",
-        tags: ["Extreme", "Math & Logic", "Divine"]
+        accentColor: "#fff8ee", glowColor: "#ddcc99",
+        subtitle: "Topic 10: 2D Grids", title: "Matrix Shrine",
+        description: "Navigate two-dimensional arrays. Solve spiral traversals, grid rotation, matrix dynamic programming, and island counting.",
+        tags: ["Hard", "2D Array", "Grid Traversal"]
     },
     pagoda: {
-        accentColor: "#cc2200",
-        glowColor: "#ff4400",
-        subtitle: "Difficulty: Joseon Dynasty",
-        title: "Korean Pagoda",
-        description: "Standing tall from Korea's Joseon Dynasty, this pagoda holds centuries of algorithmic wisdom. Each tier a harder challenge reach the top or fall with honor.",
-        tags: ["Hard", "Joseon Dynasty", "Korean"]
+        accentColor: "#cc2200", glowColor: "#ff4400",
+        subtitle: "Topic 11: Multi-Pointer Strategy", title: "2 Pointers Pagoda",
+        description: "Optimize O(N^2) problems down to O(N) by moving left and right pointers inward across sorted collections.",
+        tags: ["Medium", "Two Pointers", "Linear Optimization"]
     },
     pedestal: {
-        accentColor: "#aabbcc",
-        glowColor: "#ddeeff",
-        subtitle: "Difficulty: Monolith",
-        title: "Stone Pedestal",
-        description: "Stand before the monolith. Immovable, ancient, and unforgiving. Only those with flawless logic may claim the pedestal.",
-        tags: ["Expert", "Binary Search", "Endgame"]
+        accentColor: "#aabbcc", glowColor: "#ddeeff",
+        subtitle: "Topic 12: Subarray Windows", title: "Sliding Window Pedestal",
+        description: "Maintain a dynamic window across contiguous subarrays to track maximum sums, distinct elements, and substring bounds.",
+        tags: ["Medium", "Sliding Window", "Subarrays"]
     },
     cathedral: {
-        accentColor: "#aaccff",
-        glowColor: "#ffffff",
-        subtitle: "Difficulty: Whitestone",
-        title: "Santorini",
-        description: "A lone white building standing against the sky. Clean walls, sharp edges, pure logic. No shortcuts, no mercy just you and the algorithm.",
-        tags: ["Hard", "Divide & Conquer", "Whitestone"]
+        accentColor: "#aaccff", glowColor: "#ffffff",
+        subtitle: "Topic 13: LIFO Structure", title: "Stack Citadel",
+        description: "Last-In, First-Out memory management. Solve valid parentheses matching, expression evaluation, and monotonic stacks.",
+        tags: ["Easy / Medium", "Stack", "LIFO"]
     },
     torii: {
-        accentColor: "#ff2200",
-        glowColor: "#ff4400",
-        subtitle: "Difficulty: Tang Dynasty",
-        title: "Lantern Gate",
-        description: "Red lanterns float through the night sky as the sacred gate glows with ancient Chinese spirit. Navigate the maze of floating light one wrong turn and the lanterns go dark.",
-        tags: ["Expert", "Tang Dynasty", "Floating Lanterns"]
+        accentColor: "#ff2200", glowColor: "#ff4400",
+        subtitle: "Topic 14: FIFO Structure", title: "Queue Gate",
+        description: "First-In, First-Out task scheduling. Implement event buffers, round-robin processing, and sliding window maximums.",
+        tags: ["Easy / Medium", "Queue", "FIFO"]
     },
     castle2: {
-        accentColor: "#aabbdd",
-        glowColor: "#ccddf0",
-        subtitle: "Difficulty: Ironclad",
-        title: "Rock Fort",
-        description: "Hewn from solid rock, this fortress has never fallen. Brute force won't work here only precise, optimized logic can crack the stone walls.",
-        tags: ["Expert", "Graph Traversal", "Ironclad"]
+        accentColor: "#aabbdd", glowColor: "#ccddf0",
+        subtitle: "Topic 15: Pointer Nodes", title: "Linked List Fort",
+        description: "Manipulate node references directly. Reverse linked lists, detect Floyd's cycle loops, and merge sorted lists.",
+        tags: ["Medium", "Linked Lists", "Pointers"]
     },
     pagoda2: {
-        accentColor: "#44bb44",
-        glowColor: "#ff6633",
-        subtitle: "Difficulty: Shaolin",
-        title: "Shaolin Temple",
-        description: "Train in the sacred halls of Shaolin. Master your algorithms like a monk masters his body through discipline, repetition and enlightenment of pure logic.",
-        tags: ["Hard", "Shaolin", "Enlightenment"]
+        accentColor: "#44bb44", glowColor: "#ff6633",
+        subtitle: "Topic 16: Structural Logic", title: "Pattern Tower",
+        description: "Recognize recurring algorithmic patterns, number pyramids, string symmetry, and geometric code outputs.",
+        tags: ["Easy / Medium", "Pattern Matching", "Logic"]
     },
     barracks: {
-        accentColor: "#aa7733",
-        glowColor: "#cc9944",
-        subtitle: "Difficulty: Battalion",
-        title: "Barracks",
-        description: "Where warriors are forged. Train your algorithms under pressure. Speed, discipline and raw efficiency are the only currencies accepted here.",
-        tags: ["Medium", "Sorting & Search", "Battalion"]
+        accentColor: "#aa7733", glowColor: "#cc9944",
+        subtitle: "Topic 17: Self-Referential Logic", title: "Recursion Barracks",
+        description: "Break complex problems into smaller subproblems. Master call stacks, base cases, and divide-and-conquer strategies.",
+        tags: ["Medium", "Recursion", "Call Stack"]
     },
     palace: {
-        accentColor: "#ffdd88",
-        glowColor: "#ffcc44",
-        subtitle: "Difficulty: Royal",
-        title: "The Palace",
-        description: "The grandest arena of all. Reserved for coders of royal caliber. Every algorithm must be perfect the king accepts nothing less than optimal.",
-        tags: ["Extreme", "All Algorithms", "Royal"]
+        accentColor: "#ffdd88", glowColor: "#ffcc44",
+        subtitle: "Topic 18: State-Space Search", title: "Backtracking Palace",
+        description: "Prune decision trees to find all valid combinations, permutations, N-Queens solutions, and Sudoku solvers.",
+        tags: ["Hard / Expert", "Backtracking", "Combinatorics"]
     },
     shrine: {
-        accentColor: "#ff6633",
-        glowColor: "#ff4400",
-        subtitle: "Difficulty: Zen Master",
-        title: "Japanese Shrine",
-        description: "Pass through the sacred Torii gate beneath the mystic autumn tree. Silence your mind, find the optimal path, and achieve algorithmic enlightenment.",
-        tags: ["Expert", "Path Finding", "Zen"]
+        accentColor: "#ff6633", glowColor: "#ff4400",
+        subtitle: "Topic 19: Binary Arithmetic", title: "Bit Manipulation Shrine",
+        description: "Operate at the machine level with AND, OR, XOR, NOT, and bitwise shifts. Solve single number and power-of-two challenges.",
+        tags: ["Hard", "Bitwise", "Machine Code"]
     },
     deadforest: {
-        accentColor: "#aabbcc",
-        glowColor: "#ddeeff",
-        subtitle: "Difficulty: Norse Curse",
-        title: "Norwegian Dead Forest",
-        description: "Deep in the frozen Norwegian wilderness, cursed trees stand under eternal darkness. Face the wrath of Norse winter only Odin's chosen coders survive.",
-        tags: ["Hard", "Norse Curse", "Frozen"]
+        accentColor: "#aabbcc", glowColor: "#ddeeff",
+        subtitle: "Topic 20: Classified Challenge", title: "Mystery Land",
+        description: "Enter the uncharted realm. Face randomized hidden problem sets, mixed constraints, and secret algorithmic trials.",
+        tags: ["Expert", "Unknown Topic", "Wildcard"]
     },
     temple: {
-        accentColor: "#ffcc44",
-        glowColor: "#ffdd88",
-        subtitle: "Difficulty: Orthodox",
-        title: "Saint Basil's Cathedral",
-        description: "Rising from Red Square, this Russian Orthodox masterpiece demands divine precision. Code with the discipline of a Tsar one mistake and the domes crumble.",
-        tags: ["Hard", "Russian Orthodox", "Sacred"]
+        accentColor: "#ffcc44", glowColor: "#ffdd88",
+        subtitle: "Topic 21: Unique Collections", title: "Set Sanctuary",
+        description: "Maintain unique elements without duplicates. Compute set unions, intersections, and membership checks in constant time.",
+        tags: ["Easy / Medium", "Sets", "Uniqueness"]
     },
     archway: {
-        accentColor: "#ddccbb",
-        glowColor: "#ffffff",
-        subtitle: "Difficulty: French Empire",
-        title: "Arc de Triomphe",
-        description: "Born from Napoleon's victory, the Arc de Triomphe stands at the heart of Paris. Conquer its algorithmic grandeur and march down the Champs Élysées of code.",
-        tags: ["Extreme", "French Empire", "Monument"]
+        accentColor: "#ddccbb", glowColor: "#ffffff",
+        subtitle: "Topic 22: Dynamic Programming", title: "DP Monument",
+        description: "Store optimal subproblem results using memoization and tabulation. Solve knapsack, memoized DP, and string edit distances.",
+        tags: ["Expert", "Dynamic Programming", "Memoization"]
     },
     necro: {
-        accentColor: "#ffcc44",
-        glowColor: "#ffaa00",
-        subtitle: "Difficulty: Sacred Burial",
-        title: "Necropolis",
-        description: "Ancient walls guard the resting place of forgotten coders. The sacred light pulses with the knowledge of the dead. Decode their final algorithms.",
-        tags: ["Expert", "Cryptography", "Sacred"]
+        accentColor: "#ffcc44", glowColor: "#ffaa00",
+        subtitle: "Topic 23: Heaps & Priority", title: "Priority Queue Necropolis",
+        description: "Manage elements ranked by custom priority using Min-Heaps and Max-Heaps. Solve K-th largest element and Dijkstra's algorithm.",
+        tags: ["Hard", "Min/Max Heap", "Priority Queue"]
     },
     cemetery: {
-        accentColor: "#44aa44",
-        glowColor: "#226622",
-        subtitle: "Difficulty: Haunted",
-        title: "Cemetery",
-        description: "Gravestones float in the cursed moonlight. The lantern flickers as you debug in the dark. One wrong move and your code joins the buried.",
-        tags: ["Hard", "Backtracking", "Haunted"]
+        accentColor: "#44aa44", glowColor: "#226622",
+        subtitle: "Topic 24: Range Query Precomputation", title: "Prefix & Suffix Realm",
+        description: "Precompute cumulative sum and product arrays for O(1) range queries, product except self, and subarray balance checks.",
+        tags: ["Medium", "Prefix Sums", "Range Queries"]
     },
     pillars: {
-        accentColor: "#44aaff",
-        glowColor: "#0088ff",
-        subtitle: "Difficulty: Eternal",
-        title: "Pillars of Eternity",
-        description: "Four ancient pillars crackling with electric energy. This is the final test where only the greatest algorithmic minds are worthy of standing between them.",
-        tags: ["Extreme", "All Algorithms", "Eternal"]
+        accentColor: "#44aaff", glowColor: "#0088ff",
+        subtitle: "Topic 25: Locally Optimal Choices", title: "Greedy Pillars",
+        description: "Make the locally optimal choice at each step to reach a global optimum. Solve activity selection, interval scheduling, and Huffman coding.",
+        tags: ["Hard / Extreme", "Greedy Strategy", "Optimization"]
     },
 }
 
 const ARENAS_LIST = [
-    { id: "volcano", LandComponent: VolcanoLand, card: cards.volcano, btnText: "Enter Volcano Arena", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[10, 15, 10]} intensity={1.5} /><directionalLight position={[-10, 5, -10]} intensity={0.6} /><pointLight position={[0, 22, 0]} intensity={5} color="#ff4500" distance={40} /></>) },
-    { id: "snow", LandComponent: SnowLand, card: cards.snow, btnText: "Enter Frozen Peaks", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[20, 15, 5]} intensity={1.8} color="#cce8ff" /><directionalLight position={[-10, 10, -10]} intensity={0.5} color="#99ccff" /><pointLight position={[0, -3, 0]} intensity={1.5} color="#ddeeff" distance={30} /><pointLight position={[0, 10, -15]} intensity={1.2} color="#aabbdd" distance={40} /></>) },
-    { id: "plant", LandComponent: PlantIsland, card: cards.plant, btnText: "Enter Jungle Isle", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#aaff66" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#114400" /><pointLight position={[0, -2, 0]} intensity={1.5} color="#22aa00" distance={30} /><pointLight position={[5, 10, 5]} intensity={2} color="#aaff44" distance={35} /></>) },
-    { id: "island", LandComponent: IslandLand, card: cards.island, btnText: "Enter Island Shores", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[15, 30, 10]} intensity={2.2} color="#fff5cc" /><directionalLight position={[-10, 10, -10]} intensity={0.4} color="#aaddff" /><pointLight position={[0, -3, 0]} intensity={2} color="#00ccff" distance={35} /><pointLight position={[-10, 8, -10]} intensity={1.5} color="#ffaa33" distance={40} /></>) },
-    { id: "coliseum", LandComponent: ColiseumLand, card: cards.coliseum, btnText: "Enter The Coliseum", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[25, 20, 5]} intensity={2.0} color="#ddeeff" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#aabbcc" /><pointLight position={[0, 15, -10]} intensity={2} color="#c0d0ff" distance={40} /><pointLight position={[0, -2, 0]} intensity={0.8} color="#886633" distance={25} /></>) },
-    { id: "pyramid", LandComponent: PyramidLand, card: cards.pyramid, btnText: "Enter Desert Pyramid", lights: () => (<><ambientLight intensity={0.3} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffcc77" /><directionalLight position={[-10, 5, -10]} intensity={0.2} color="#331a00" /><pointLight position={[0, -5, 0]} intensity={1.5} color="#ff8800" distance={40} /><pointLight position={[0, 10, -15]} intensity={2} color="#ffaa00" distance={50} /></>) },
-    { id: "castle", LandComponent: CastleFortress, card: cards.castle, btnText: "Enter Castle Fortress", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 25, 15]} intensity={1.3} /><directionalLight position={[-10, 10, -10]} intensity={0.5} /></>) },
-    { id: "ruin", LandComponent: RuinLand, card: cards.ruin, btnText: "Enter Ancient Ruins", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 25, 15]} intensity={1.3} /><directionalLight position={[-10, 10, -10]} intensity={0.5} /></>) },
-    { id: "mayan", LandComponent: MayanTemple, card: cards.mayan, btnText: "Enter Mayan Temple", lights: () => (<><ambientLight intensity={0.35} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ccccbb" /><directionalLight position={[-10, 5, -10]} intensity={0.25} color="#223300" /><pointLight position={[0, -2, 0]} intensity={1.5} color="#554433" distance={30} /><pointLight position={[0, 8, 5]} intensity={2} color="#ff8800" distance={35} /></>) },
-    { id: "greek", LandComponent: GreekTemple, card: cards.greek, btnText: "Enter Greek Temple", lights: () => (<><ambientLight intensity={0.7} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.6} color="#cce0ff" /><pointLight position={[0, -3, 0]} intensity={1.8} color="#fff8ee" distance={35} /><pointLight position={[0, 20, -12]} intensity={2.2} color="#ffe8aa" distance={50} /></>) },
-    { id: "pagoda", LandComponent: PagodaLand, card: cards.pagoda, btnText: "Enter Pagoda Tower", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} /><pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} /></>) },
-    { id: "pedestal", LandComponent: PedestalLand, card: cards.pedestal, btnText: "Enter Stone Pedestal", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={1.8} color="#ddeeff" /><directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" /><pointLight position={[0, -3, 0]} intensity={1.5} color="#ccddee" distance={35} /><pointLight position={[0, 15, -10]} intensity={1.8} color="#eef0ff" distance={45} /></>) },
-    { id: "cathedral", LandComponent: CathedralLand, card: cards.cathedral, btnText: "Enter Santorini", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 30, 10]} intensity={2.2} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#aaccff" /><pointLight position={[0, 10, 0]} intensity={2} color="#ddeeff" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.5} color="#ffffff" distance={35} /></>) },
-    { id: "torii", LandComponent: ToriiLand, card: cards.torii, btnText: "Enter Torii Gate", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} /><pointLight position={[0, 12, -8]} intensity={2} color="#ff8800" distance={40} /></>) },
-    { id: "castle2", LandComponent: Castle2Land, card: cards.castle2, btnText: "Enter Rock Fort", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={2.0} color="#ddeeff" /><directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" /><pointLight position={[0, 10, 0]} intensity={2} color="#bbccee" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.2} color="#99aabb" distance={30} /></>) },
-    { id: "pagoda2", LandComponent: Pagoda2Land, card: cards.pagoda2, btnText: "Enter Jade Pagoda", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#aaffaa" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#113300" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff5500" distance={35} /><pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} /></>) },
-    { id: "barracks", LandComponent: BarracksLand, card: cards.barracks, btnText: "Enter Barracks", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ddbb88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" /><pointLight position={[0, 5, 0]} intensity={2} color="#cc8833" distance={35} /><pointLight position={[0, 12, -8]} intensity={1.5} color="#ffaa44" distance={40} /></>) },
-    { id: "palace", LandComponent: PalaceLand, card: cards.palace, btnText: "Enter The Palace", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffeeaa" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#bbaa44" /><pointLight position={[0, 5, 0]} intensity={3} color="#ffdd44" distance={40} /><pointLight position={[0, 20, -10]} intensity={2} color="#ffcc00" distance={50} /></>) },
-    { id: "shrine", LandComponent: JapaneseShrine, card: cards.shrine, btnText: "Enter Japanese Shrine", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" /><pointLight position={[0, 5, 0]} intensity={2.5} color="#ff5500" distance={35} /><pointLight position={[0, 12, 5]} intensity={1.8} color="#ffaa44" distance={40} /></>) },
-    { id: "deadforest", LandComponent: DeadForest, card: cards.deadforest, btnText: "Enter Dead Winter Forest", lights: () => (<><ambientLight intensity={1.2} /><directionalLight position={[20, 30, 10]} intensity={3.0} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={1.5} color="#eef5ff" /><directionalLight position={[0, -10, 15]} intensity={1.0} color="#cce0ff" /><pointLight position={[0, 10, 5]} intensity={4} color="#ffffff" distance={50} /></>) },
-    { id: "temple", LandComponent: TempleLand, card: cards.temple, btnText: "Enter Saint Basil's", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffeeaa" /><directionalLight position={[-10, 10, -10]} intensity={0.4} color="#ffcc66" /><pointLight position={[0, 10, 0]} intensity={2.5} color="#ffdd44" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.2} color="#ff8800" distance={25} /></>) },
-    { id: "archway", LandComponent: ArchwayLand, card: cards.archway, btnText: "Enter Arc de Triomphe", lights: () => (<><ambientLight intensity={0.7} /><directionalLight position={[20, 30, 10]} intensity={2.2} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#ddeeff" /><pointLight position={[0, 5, 0]} intensity={2} color="#ffffff" distance={35} /><pointLight position={[0, 15, -8]} intensity={1.5} color="#eeeeff" distance={40} /></>) },
-    { id: "necro", LandComponent: NecroLand, card: cards.necro, btnText: "Enter Necropolis", lights: () => (<><ambientLight intensity={0.3} /><directionalLight position={[15, 25, 10]} intensity={1.5} color="#ffeeaa" /><directionalLight position={[-10, 5, -10]} intensity={0.2} color="#332200" /></>) },
-    { id: "cemetery", LandComponent: CemeteryLand, card: cards.cemetery, btnText: "Enter Cemetery", lights: () => (<><ambientLight intensity={0.9} /><directionalLight position={[8, 15, 8]} intensity={0.8} color="#99aabb" /><directionalLight position={[-8, 10, -8]} intensity={0.5} color="#667788" /></>) },
-    { id: "pillars", LandComponent: PillarsLand, card: cards.pillars, btnText: "Enter Pillars of Eternity", lights: () => (<><ambientLight intensity={1.2} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffffff" /><directionalLight position={[-10, 10, -10]} intensity={1.0} color="#aaccff" /><pointLight position={[0, 5, 0]} intensity={3} color="#44aaff" distance={30} /></>) },
+    { id: "volcano", LandComponent: VolcanoLand, card: cards.volcano, btnText: "Enter Array Realm", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[10, 15, 10]} intensity={1.5} /><directionalLight position={[-10, 5, -10]} intensity={0.6} /><pointLight position={[0, 22, 0]} intensity={5} color="#ff4500" distance={40} /></>) },
+    { id: "snow", LandComponent: SnowLand, card: cards.snow, btnText: "Enter String Sanctum", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[20, 15, 5]} intensity={1.8} color="#cce8ff" /><directionalLight position={[-10, 10, -10]} intensity={0.5} color="#99ccff" /><pointLight position={[0, -3, 0]} intensity={1.5} color="#ddeeff" distance={30} /><pointLight position={[0, 10, -15]} intensity={1.2} color="#aabbdd" distance={40} /></>) },
+    { id: "plant", LandComponent: PlantIsland, card: cards.plant, btnText: "Enter Hash Table Isle", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#aaff66" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#114400" /><pointLight position={[0, -2, 0]} intensity={1.5} color="#22aa00" distance={30} /><pointLight position={[5, 10, 5]} intensity={2} color="#aaff44" distance={35} /></>) },
+    { id: "island", LandComponent: IslandLand, card: cards.island, btnText: "Enter Math Arena", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[15, 30, 10]} intensity={2.2} color="#fff5cc" /><directionalLight position={[-10, 10, -10]} intensity={0.4} color="#aaddff" /><pointLight position={[0, -3, 0]} intensity={2} color="#00ccff" distance={35} /><pointLight position={[-10, 8, -10]} intensity={1.5} color="#ffaa33" distance={40} /></>) },
+    { id: "coliseum", LandComponent: ColiseumLand, card: cards.coliseum, btnText: "Enter Sorting Coliseum", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[25, 20, 5]} intensity={2.0} color="#ddeeff" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#aabbcc" /><pointLight position={[0, 15, -10]} intensity={2} color="#c0d0ff" distance={40} /><pointLight position={[0, -2, 0]} intensity={0.8} color="#886633" distance={25} /></>) },
+    { id: "pyramid", LandComponent: PyramidLand, card: cards.pyramid, btnText: "Enter Searching Pyramid", lights: () => (<><ambientLight intensity={0.3} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffcc77" /><directionalLight position={[-10, 5, -10]} intensity={0.2} color="#331a00" /><pointLight position={[0, -5, 0]} intensity={1.5} color="#ff8800" distance={40} /><pointLight position={[0, 10, -15]} intensity={2} color="#ffaa00" distance={50} /></>) },
+    { id: "castle", LandComponent: CastleFortress, card: cards.castle, btnText: "Enter DFS Fortress", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 25, 15]} intensity={1.3} /><directionalLight position={[-10, 10, -10]} intensity={0.5} /></>) },
+    { id: "ruin", LandComponent: RuinLand, card: cards.ruin, btnText: "Enter BFS Ruins", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 25, 15]} intensity={1.3} /><directionalLight position={[-10, 10, -10]} intensity={0.5} /></>) },
+    { id: "mayan", LandComponent: MayanTemple, card: cards.mayan, btnText: "Enter Database Temple", lights: () => (<><ambientLight intensity={0.35} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ccccbb" /><directionalLight position={[-10, 5, -10]} intensity={0.25} color="#223300" /><pointLight position={[0, -2, 0]} intensity={1.5} color="#554433" distance={30} /><pointLight position={[0, 8, 5]} intensity={2} color="#ff8800" distance={35} /></>) },
+    { id: "greek", LandComponent: GreekTemple, card: cards.greek, btnText: "Enter Matrix Shrine", lights: () => (<><ambientLight intensity={0.7} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.6} color="#cce0ff" /><pointLight position={[0, -3, 0]} intensity={1.8} color="#fff8ee" distance={35} /><pointLight position={[0, 20, -12]} intensity={2.2} color="#ffe8aa" distance={50} /></>) },
+    { id: "pagoda", LandComponent: PagodaLand, card: cards.pagoda, btnText: "Enter 2 Pointers Pagoda", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} /><pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} /></>) },
+    { id: "pedestal", LandComponent: PedestalLand, card: cards.pedestal, btnText: "Enter Sliding Window Pedestal", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={1.8} color="#ddeeff" /><directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" /><pointLight position={[0, -3, 0]} intensity={1.5} color="#ccddee" distance={35} /><pointLight position={[0, 15, -10]} intensity={1.8} color="#eef0ff" distance={45} /></>) },
+    { id: "cathedral", LandComponent: CathedralLand, card: cards.cathedral, btnText: "Enter Stack Citadel", lights: () => (<><ambientLight intensity={0.8} /><directionalLight position={[15, 30, 10]} intensity={2.2} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#aaccff" /><pointLight position={[0, 10, 0]} intensity={2} color="#ddeeff" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.5} color="#ffffff" distance={35} /></>) },
+    { id: "torii", LandComponent: ToriiLand, card: cards.torii, btnText: "Enter Queue Gate", lights: () => (<><ambientLight intensity={0.4} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#330000" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff4400" distance={35} /><pointLight position={[0, 12, -8]} intensity={2} color="#ff8800" distance={40} /></>) },
+    { id: "castle2", LandComponent: Castle2Land, card: cards.castle2, btnText: "Enter Linked List Fort", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={2.0} color="#ddeeff" /><directionalLight position={[-10, 15, -10]} intensity={0.4} color="#aabbcc" /><pointLight position={[0, 10, 0]} intensity={2} color="#bbccee" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.2} color="#99aabb" distance={30} /></>) },
+    { id: "pagoda2", LandComponent: Pagoda2Land, card: cards.pagoda2, btnText: "Enter Pattern Tower", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#aaffaa" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#113300" /><pointLight position={[0, 5, 0]} intensity={3} color="#ff5500" distance={35} /><pointLight position={[0, 15, 5]} intensity={2} color="#ffaa00" distance={40} /></>) },
+    { id: "barracks", LandComponent: BarracksLand, card: cards.barracks, btnText: "Enter Recursion Barracks", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ddbb88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" /><pointLight position={[0, 5, 0]} intensity={2} color="#cc8833" distance={35} /><pointLight position={[0, 12, -8]} intensity={1.5} color="#ffaa44" distance={40} /></>) },
+    { id: "palace", LandComponent: PalaceLand, card: cards.palace, btnText: "Enter Backtracking Palace", lights: () => (<><ambientLight intensity={0.6} /><directionalLight position={[20, 30, 10]} intensity={2.5} color="#ffeeaa" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#bbaa44" /><pointLight position={[0, 5, 0]} intensity={3} color="#ffdd44" distance={40} /><pointLight position={[0, 20, -10]} intensity={2} color="#ffcc00" distance={50} /></>) },
+    { id: "shrine", LandComponent: JapaneseShrine, card: cards.shrine, btnText: "Enter Bit Manipulation Shrine", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={1.8} color="#ffcc88" /><directionalLight position={[-10, 5, -10]} intensity={0.3} color="#221100" /><pointLight position={[0, 5, 0]} intensity={2.5} color="#ff5500" distance={35} /><pointLight position={[0, 12, 5]} intensity={1.8} color="#ffaa44" distance={40} /></>) },
+    { id: "deadforest", LandComponent: DeadForest, card: cards.deadforest, btnText: "Enter Mystery Land", lights: () => (<><ambientLight intensity={1.2} /><directionalLight position={[20, 30, 10]} intensity={3.0} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={1.5} color="#eef5ff" /><directionalLight position={[0, -10, 15]} intensity={1.0} color="#cce0ff" /><pointLight position={[0, 10, 5]} intensity={4} color="#ffffff" distance={50} /></>) },
+    { id: "temple", LandComponent: TempleLand, card: cards.temple, btnText: "Enter Set Sanctuary", lights: () => (<><ambientLight intensity={0.5} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffeeaa" /><directionalLight position={[-10, 10, -10]} intensity={0.4} color="#ffcc66" /><pointLight position={[0, 10, 0]} intensity={2.5} color="#ffdd44" distance={40} /><pointLight position={[0, -3, 5]} intensity={1.2} color="#ff8800" distance={25} /></>) },
+    { id: "archway", LandComponent: ArchwayLand, card: cards.archway, btnText: "Enter DP Monument", lights: () => (<><ambientLight intensity={0.7} /><directionalLight position={[20, 30, 10]} intensity={2.2} color="#ffffff" /><directionalLight position={[-10, 15, -10]} intensity={0.5} color="#ddeeff" /><pointLight position={[0, 5, 0]} intensity={2} color="#ffffff" distance={35} /><pointLight position={[0, 15, -8]} intensity={1.5} color="#eeeeff" distance={40} /></>) },
+    { id: "necro", LandComponent: NecroLand, card: cards.necro, btnText: "Enter Priority Queue Necropolis", lights: () => (<><ambientLight intensity={0.3} /><directionalLight position={[15, 25, 10]} intensity={1.5} color="#ffeeaa" /><directionalLight position={[-10, 5, -10]} intensity={0.2} color="#332200" /></>) },
+    { id: "cemetery", LandComponent: CemeteryLand, card: cards.cemetery, btnText: "Enter Prefix/Suffix Realm", lights: () => (<><ambientLight intensity={0.9} /><directionalLight position={[8, 15, 8]} intensity={0.8} color="#99aabb" /><directionalLight position={[-8, 10, -8]} intensity={0.5} color="#667788" /></>) },
+    { id: "pillars", LandComponent: PillarsLand, card: cards.pillars, btnText: "Enter Greedy Pillars", lights: () => (<><ambientLight intensity={1.2} /><directionalLight position={[15, 25, 10]} intensity={2.0} color="#ffffff" /><directionalLight position={[-10, 10, -10]} intensity={1.0} color="#aaccff" /><pointLight position={[0, 5, 0]} intensity={3} color="#44aaff" distance={30} /></>) },
 ]
 
 const CAROUSEL_BREAKPOINT = 1024
 
 // ─────────────────────────────────────────────────────────────────────
-// Desktop Scroll Layout — each arena is a full viewport-height section
+// Desktop Scroll Layout — with IntersectionObserver background switching
 // ─────────────────────────────────────────────────────────────────────
 function DesktopScrollLayout() {
     const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
+    const sectionRefs = useRef([])
+    const [activeLandIdx, setActiveLandIdx] = useState(0)
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const index = Number(entry.target.getAttribute("data-index"))
+                        if (!isNaN(index)) {
+                            setActiveLandIdx(index)
+                        }
+                    }
+                })
+            },
+            {
+                root: null,
+                rootMargin: "-25% 0px -25% 0px",
+                threshold: 0.15
+            }
+        )
+
+        sectionRefs.current.forEach((el) => {
+            if (el) observer.observe(el)
+        })
+
+        return () => observer.disconnect()
+    }, [])
+
+    const currentLandId = ARENAS_LIST[activeLandIdx]?.id || "volcano"
 
     return (
-        <div style={{ width: "100%" }}>
-            {ARENAS_LIST.map((arena, idx) => {
-                const LandComp = arena.LandComponent
-                const isEven = idx % 2 === 0
-                const nextArena = idx < ARENAS_LIST.length - 1 ? ARENAS_LIST[idx + 1].card.title : null
-                const accent = arena.card.accentColor
-                const glow = arena.card.glowColor
+        <>
+            {/* Dynamic Environmental Background System */}
+            <DynamicBackground activeLandId={currentLandId} />
 
-                return (
-                    <div
-                        key={arena.id}
-                        style={{
-                            minHeight: "100vh",
-                            width: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "40px 5%",
-                            boxSizing: "border-box",
-                            position: "relative",
-                            background: `radial-gradient(ellipse at ${isEven ? "30%" : "70%"} 50%, ${glow}18 0%, transparent 60%)`
-                        }}
-                    >
-                        <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "60px",
-                            width: "100%",
-                            maxWidth: "1200px",
-                            flexDirection: isEven ? "row" : "row-reverse"
-                        }}>
-                            {/* 3D Canvas */}
-                            <div style={{
-                                width: "55%",
-                                maxWidth: "600px",
-                                height: "500px",
-                                position: "relative"
-                            }}>
-                                <LazyCanvas camera={cameraConfig}>
-                                    {arena.lights()}
-                                    <Suspense fallback={null}>
-                                        <LandComp />
-                                    </Suspense>
-                                </LazyCanvas>
-                            </div>
+            <div style={{ width: "100%", position: "relative", zIndex: 1 }}>
+                {ARENAS_LIST.map((arena, idx) => {
+                    const LandComp = arena.LandComponent
+                    const isEven = idx % 2 === 0
+                    const nextArena = idx < ARENAS_LIST.length - 1 ? ARENAS_LIST[idx + 1].card.title : null
+                    const accent = arena.card.accentColor
+                    const glow = arena.card.glowColor
 
-                            {/* Card + Button */}
-                            <div style={{
+                    return (
+                        <div
+                            key={arena.id}
+                            data-index={idx}
+                            ref={(el) => { sectionRefs.current[idx] = el }}
+                            style={{
+                                minHeight: "100vh",
+                                width: "100%",
                                 display: "flex",
-                                flexDirection: "column",
                                 alignItems: "center",
-                                gap: "20px",
-                                width: "40%",
-                                maxWidth: "380px"
-                            }}>
-                                <ArenaCard
-                                    side={isEven ? "right" : "left"}
-                                    {...arena.card}
-                                    nextArena={nextArena}
-                                    width="100%"
-                                />
-                                <button style={{
-                                    background: "rgba(0,0,0,0.85)",
-                                    border: `1px solid ${accent}`,
-                                    borderRadius: "30px",
-                                    padding: "14px 32px",
-                                    color: "#ffffff",
-                                    fontFamily: "'Georgia', serif",
-                                    fontSize: "13px",
-                                    fontWeight: "bold",
-                                    letterSpacing: "2px",
-                                    cursor: "pointer",
-                                    textTransform: "uppercase",
-                                    boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
-                                    transition: "all 0.3s ease"
-                                }}>
-                                    {arena.btnText}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Section Divider */}
-                        {idx < ARENAS_LIST.length - 1 && (
+                                justifyContent: "center",
+                                padding: "40px 5%",
+                                boxSizing: "border-box",
+                                position: "relative"
+                            }}
+                        >
+                            {/* Per-section subtle glow overlay */}
                             <div style={{
                                 position: "absolute",
-                                bottom: 0,
-                                left: "10%",
-                                right: "10%",
-                                height: "1px",
-                                background: `linear-gradient(90deg, transparent, ${accent}44, transparent)`
+                                inset: 0,
+                                background: `radial-gradient(ellipse at ${isEven ? "30%" : "70%"} 50%, ${glow}14 0%, transparent 55%)`,
+                                pointerEvents: "none"
                             }} />
-                        )}
-                    </div>
-                )
-            })}
-        </div>
+
+                            <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "60px",
+                                width: "100%",
+                                maxWidth: "1200px",
+                                flexDirection: isEven ? "row" : "row-reverse",
+                                position: "relative",
+                                zIndex: 1
+                            }}>
+                                {/* 3D Canvas */}
+                                <div style={{
+                                    width: "55%",
+                                    maxWidth: "600px",
+                                    height: "500px",
+                                    position: "relative"
+                                }}>
+                                    <LazyCanvas camera={cameraConfig}>
+                                        {arena.lights()}
+                                        <Suspense fallback={null}>
+                                            <LandComp />
+                                        </Suspense>
+                                    </LazyCanvas>
+                                </div>
+
+                                {/* Card + Button */}
+                                <div style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gap: "20px",
+                                    width: "40%",
+                                    maxWidth: "380px"
+                                }}>
+                                    <ArenaCard
+                                        side={isEven ? "right" : "left"}
+                                        {...arena.card}
+                                        nextArena={nextArena}
+                                        width="100%"
+                                    />
+                                    <button style={{
+                                        background: "rgba(0,0,0,0.85)",
+                                        border: `1px solid ${accent}`,
+                                        borderRadius: "30px",
+                                        padding: "14px 32px",
+                                        color: "#ffffff",
+                                        fontFamily: "'Clash Display', sans-serif",
+                                        fontSize: "13px",
+                                        fontWeight: "bold",
+                                        letterSpacing: "2px",
+                                        cursor: "pointer",
+                                        textTransform: "uppercase",
+                                        boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
+                                        transition: "all 0.3s ease"
+                                    }}>
+                                        {arena.btnText}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Section Divider */}
+                            {idx < ARENAS_LIST.length - 1 && (
+                                <div style={{
+                                    position: "absolute",
+                                    bottom: 0,
+                                    left: "10%",
+                                    right: "10%",
+                                    height: "1px",
+                                    background: `linear-gradient(90deg, transparent, ${accent}44, transparent)`
+                                }} />
+                            )}
+                        </div>
+                    )
+                })}
+            </div>
+        </>
     )
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Carousel Layout — for tablets, mobiles, small screens (<1024px)
-// Uses a SINGLE Canvas to avoid WebGL context limits
+// Carousel Layout — with dynamic background layer
 // ─────────────────────────────────────────────────────────────────────
 function CarouselLayout() {
     const [activeIdx, setActiveIdx] = useState(0)
@@ -442,23 +422,17 @@ function CarouselLayout() {
                 justifyContent: "center",
                 padding: "16px",
                 boxSizing: "border-box",
-                background: `radial-gradient(circle at 50% 40%, ${glow}15 0%, #080808 75%)`,
-                transition: "background 0.8s ease",
                 overflowX: "hidden",
                 position: "relative"
             }}
         >
-            {/* Ambient glow */}
-            <div style={{
-                position: "absolute", inset: 0,
-                background: `radial-gradient(ellipse at 50% 50%, ${accent}22 0%, transparent 60%)`,
-                pointerEvents: "none", transition: "all 0.8s ease"
-            }} />
+            {/* Dynamic Environmental Background System */}
+            <DynamicBackground activeLandId={currentArena.id} />
 
             <div style={{
                 width: "100%", maxWidth: "600px",
                 display: "flex", flexDirection: "column", alignItems: "center",
-                zIndex: 2, position: "relative", gap: "16px"
+                zIndex: 2, position: "relative", gap: "16px", marginTop: "32px"
             }}>
                 {/* Navigation */}
                 <div style={{
@@ -474,7 +448,7 @@ function CarouselLayout() {
                     }}>❮ PREV</button>
 
                     <div style={{
-                        color: "#fff", fontFamily: "'Georgia', serif",
+                        color: "#fff", fontFamily: "'Clash Display', sans-serif",
                         fontSize: "13px", fontWeight: "bold", letterSpacing: "2px",
                         textShadow: `0 0 10px ${glow}88`
                     }}>ARENA {activeIdx + 1} / {ARENAS_LIST.length}</div>
@@ -510,7 +484,7 @@ function CarouselLayout() {
                     <button style={{
                         background: "rgba(0,0,0,0.85)", border: `1px solid ${accent}`,
                         borderRadius: "30px", padding: "12px 28px", color: "#fff",
-                        fontFamily: "'Georgia', serif", fontSize: "12px", fontWeight: "bold",
+                        fontFamily: "'Clash Display', sans-serif", fontSize: "12px", fontWeight: "bold",
                         letterSpacing: "2px", cursor: "pointer", textTransform: "uppercase",
                         boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
                         transition: "all 0.3s ease"
@@ -549,6 +523,12 @@ export default function Scene() {
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < CAROUSEL_BREAKPOINT : false
     )
+    const navigate = useNavigate()
+
+    const handleLogout = () => {
+        clearSession()
+        navigate("/", { state: { reason: "logout" } })
+    }
 
     useEffect(() => {
         const mq = window.matchMedia(`(max-width: ${CAROUSEL_BREAKPOINT - 1}px)`)
@@ -558,8 +538,86 @@ export default function Scene() {
         return () => mq.removeEventListener("change", handler)
     }, [])
 
-    if (isSmallScreen) {
-        return <CarouselLayout />
-    }
-    return <DesktopScrollLayout />
+    return (
+        <>
+            {/* Unified Fixed Top Header with Clean Logout for Both Desktop and Mobile */}
+            <header style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 1000,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: isSmallScreen ? "12px 18px" : "14px 32px",
+                background: "linear-gradient(180deg, rgba(17,24,39,0.85) 0%, rgba(17,24,39,0.3) 70%, transparent 100%)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                fontFamily: "'Clash', 'Clash Display', sans-serif",
+                pointerEvents: "auto"
+            }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{
+                        background: "#FFC451",
+                        color: "#000",
+                        fontSize: "10px",
+                        fontWeight: "800",
+                        padding: "3px 10px",
+                        borderRadius: "100px",
+                        letterSpacing: "0.15em",
+                        boxShadow: "0 0 12px rgba(255,196,81,0.35)"
+                    }}>
+                        COC
+                    </span>
+                    <span style={{
+                        color: "#FFC451",
+                        fontSize: "13px",
+                        fontWeight: "700",
+                        letterSpacing: "0.2em",
+                        textShadow: "0 0 16px rgba(255,196,81,0.25)"
+                    }}>
+                        3D ARENA
+                    </span>
+                </div>
+
+                <button
+                    onClick={handleLogout}
+                    title="Logout from arena"
+                    aria-label="Logout"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: "rgba(0,0,0,0.5)",
+                        border: "1px solid rgba(255,196,81,0.25)",
+                        color: "#FFC451",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        letterSpacing: "0.12em",
+                        padding: "6px 14px",
+                        borderRadius: "100px",
+                        cursor: "pointer",
+                        transition: "all 0.25s ease",
+                        boxShadow: "0 2px 10px rgba(0,0,0,0.4)"
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#DC2626"
+                        e.currentTarget.style.background = "rgba(220,38,38,0.25)"
+                        e.currentTarget.style.boxShadow = "0 0 15px rgba(220,38,38,0.35)"
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(255,196,81,0.25)"
+                        e.currentTarget.style.background = "rgba(0,0,0,0.5)"
+                        e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.4)"
+                    }}
+                >
+                    <span style={{ fontSize: "12px", opacity: 0.85 }}>🚪</span>
+                    <span>LOGOUT</span>
+                </button>
+            </header>
+
+            {isSmallScreen ? <CarouselLayout /> : <DesktopScrollLayout />}
+        </>
+    )
 }
