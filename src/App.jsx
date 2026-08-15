@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import Login from "./components/Login";
 import Scene from "./scene/Scene";
+import Admin from "./components/Admin";
 import {
   isLoggedIn,
   isSessionExpired,
@@ -22,6 +23,7 @@ import {
   SESSION_FP_KEY,
   IDLE_TS_KEY,
 } from "./utils/sessionSecurity";
+import { validateContestParams } from "./config/contestConfig";
 
 // ═══════════════════════════════════════════════════════════════
 //  PRIVATE ROUTE — multi-layer auth guard
@@ -32,19 +34,21 @@ function PrivateRoute({ children }) {
 
   useEffect(() => {
     async function verify() {
+      const validated = validateContestParams(location.search);
+      const search = validated.queryString;
       if (!isLoggedIn()) {
         clearSession();
-        navigate("/", { replace: true });
+        navigate(`/login${search}`, { replace: true });
         return;
       }
       if (isSessionExpired()) {
         clearSession();
-        navigate("/", { replace: true, state: { reason: "session_expired" } });
+        navigate(`/login${search}`, { replace: true, state: { reason: "session_expired" } });
         return;
       }
       if (isIdleExpired()) {
         clearSession();
-        navigate("/", { replace: true, state: { reason: "idle_timeout" } });
+        navigate(`/login${search}`, { replace: true, state: { reason: "idle_timeout" } });
         return;
       }
       // Fingerprint check
@@ -52,7 +56,7 @@ function PrivateRoute({ children }) {
       const currentFp = await buildFingerprint();
       if (storedFp && storedFp !== currentFp) {
         clearSession();
-        navigate("/", {
+        navigate(`/login${search}`, {
           replace: true,
           state: { reason: "fingerprint_mismatch" },
         });
@@ -61,11 +65,12 @@ function PrivateRoute({ children }) {
       touchActivity();
     }
     verify();
-  }, [location.pathname, navigate]);
+  }, [location.pathname, location.search, navigate]);
 
-  // Synchronous guard — block render if clearly not authenticated
+  // Synchronous guard — block render and synchronously redirect if unauthenticated
   if (!isLoggedIn() || isSessionExpired() || isIdleExpired()) {
-    return null;
+    const validated = validateContestParams(location.search);
+    return <Navigate to={`/login${validated.queryString}`} replace />;
   }
   return children;
 }
@@ -81,7 +86,8 @@ function HistoryLock() {
   useEffect(() => {
     if (!isArena) return;
 
-    window.history.replaceState({ historyLock: true }, "", "/arena");
+    const validated = validateContestParams(location.search);
+    window.history.replaceState({ historyLock: true }, "", `/arena${validated.queryString}`);
 
     const onPopState = () => {
       const currentPath = window.location.pathname;
@@ -93,14 +99,15 @@ function HistoryLock() {
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [isArena, navigate]);
+  }, [isArena, location.search, navigate]);
 
   useEffect(() => {
     if (isArena && !isFullyAuthenticated()) {
       clearSession();
-      navigate("/", { replace: true });
+      const validated = validateContestParams(location.search);
+      navigate(`/login${validated.queryString}`, { replace: true });
     }
-  }, [isArena, navigate]);
+  }, [isArena, location.search, navigate]);
 
   return null;
 }
@@ -124,7 +131,8 @@ function IdleWatcher() {
       if (!isLoggedIn()) return;
       if (isIdleExpired()) {
         clearSession();
-        navigate("/", { replace: true, state: { reason: "idle_timeout" } });
+        const validated = validateContestParams(window.location.search);
+        navigate(`/login${validated.queryString}`, { replace: true, state: { reason: "idle_timeout" } });
         return;
       }
       touchActivity();
@@ -132,7 +140,8 @@ function IdleWatcher() {
     const poll = setInterval(() => {
       if (isLoggedIn() && isIdleExpired()) {
         clearSession();
-        navigate("/", { replace: true, state: { reason: "idle_timeout" } });
+        const validated = validateContestParams(window.location.search);
+        navigate(`/login${validated.queryString}`, { replace: true, state: { reason: "idle_timeout" } });
       }
     }, 30_000);
     EVENTS.forEach((ev) =>
@@ -166,7 +175,8 @@ function VisibilityGuard() {
           isLoggedIn()
         ) {
           clearSession();
-          navigate("/", { replace: true, state: { reason: "tab_hidden" } });
+          const validated = validateContestParams(window.location.search);
+          navigate(`/login${validated.queryString}`, { replace: true, state: { reason: "tab_hidden" } });
         }
         hiddenSince.current = null;
       }
@@ -192,12 +202,14 @@ function StorageGuard() {
       const hasIt = !!sessionStorage.getItem(IDLE_TS_KEY);
       if (!hasTs || !hasFp || !hasIt) {
         clearSession();
-        navigate("/", { replace: true, state: { reason: "tampered" } });
+        const validated = validateContestParams(window.location.search);
+        navigate(`/login${validated.queryString}`, { replace: true, state: { reason: "tampered" } });
         return;
       }
       if (isSessionExpired() || isIdleExpired()) {
         clearSession();
-        navigate("/", { replace: true, state: { reason: "session_expired" } });
+        const validated = validateContestParams(window.location.search);
+        navigate(`/login${validated.queryString}`, { replace: true, state: { reason: "session_expired" } });
       }
     }, 5_000);
     return () => clearInterval(poll);
@@ -224,6 +236,8 @@ function AppInner() {
     setAuthed(isFullyAuthenticated());
   }, [location]);
 
+  const validatedQuery = validateContestParams(location.search).queryString;
+
   return (
     <>
       <HistoryLock />
@@ -231,13 +245,31 @@ function AppInner() {
       <VisibilityGuard />
       <StorageGuard />
       <Routes>
-        {/* Public — redirect to arena if already authenticated */}
+        {/* Public Login Route — supports /login?round=1, /login?round=2&phase=1, etc. */}
         <Route
-          path="/"
-          element={authed ? <Navigate to="/arena" replace /> : <Login />}
+          path="/login"
+          element={
+            authed ? (
+              <Navigate to={`/arena${validatedQuery}`} replace />
+            ) : (
+              <Login />
+            )
+          }
         />
 
-        {/* Protected Arena */}
+        {/* Root Redirect to /login preserving query parameters */}
+        <Route
+          path="/"
+          element={
+            authed ? (
+              <Navigate to={`/arena${validatedQuery}`} replace />
+            ) : (
+              <Navigate to={`/login${validatedQuery}`} replace />
+            )
+          }
+        />
+
+        {/* Protected Arena — /arena?round=1, /arena?round=2&phase=1, etc. */}
         <Route
           path="/arena"
           element={
@@ -247,8 +279,11 @@ function AppInner() {
           }
         />
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Admin Stage Control Panel */}
+        <Route path="/admin" element={<Admin />} />
+
+        {/* Catch-all — redirect to /login with preserved query */}
+        <Route path="*" element={<Navigate to={`/login${validatedQuery}`} replace />} />
       </Routes>
     </>
   );

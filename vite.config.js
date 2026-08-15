@@ -11,7 +11,7 @@ const securityHeaders = {
 
 // Optimized Vite build configuration with WebAssembly CSP & HTTP security headers
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [react()],
   server: {
     headers: securityHeaders,

@@ -5,7 +5,7 @@
 @font-face {
     font-family: 'Clash';
     src: url('/fonts/ClashDisplay-Regular.woff2') format('woff2');
-    font-weight: 400 700;
+    font-weight: 100 900;
     font-style: normal;
     font-display: swap;
 }
@@ -13,9 +13,13 @@
 @font-face {
     font-family: 'Clash Display';
     src: url('/fonts/ClashDisplay-Regular.woff2') format('woff2');
-    font-weight: 400 700;
+    font-weight: 100 900;
     font-style: normal;
     font-display: swap;
+}
+
+:root {
+    --font-clash: 'Clash', 'Clash Display', sans-serif;
 }
 
 html, body {
@@ -24,7 +28,7 @@ html, body {
     width: 100%;
     min-height: 100%;
     background: #111827;
-    font-family: 'Clash', 'Clash Display', sans-serif;
+    font-family: var(--font-clash);
     overflow-x: hidden;
 }
 
@@ -35,6 +39,11 @@ html, body {
     min-height: 100%;
 }
 
-* {
+*, *::before, *::after {
     box-sizing: border-box;
+    font-family: inherit;
+}
+
+input, button, textarea, select, code, pre {
+    font-family: var(--font-clash);
 }

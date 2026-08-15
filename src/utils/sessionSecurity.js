@@ -6,6 +6,7 @@ export const SESSION_KEY     = "coc_sessionToken";
 export const SESSION_TS_KEY  = "coc_sessionIssuedAt";
 export const SESSION_FP_KEY  = "coc_sessionFingerprint";
 export const IDLE_TS_KEY     = "coc_lastActivityAt";
+export const TEAM_DATA_KEY   = "coc_teamData";
 export const SESSION_TTL_MS  = 4 * 60 * 60 * 1000;  // 4 hours
 export const IDLE_TIMEOUT_MS = 30 * 60 * 1000;       // 30 min idle
 
@@ -64,8 +65,6 @@ export async function stampSession(token) {
 }
 
 // ── Team data persistence (survives refresh, cleared on logout) ─
-export const TEAM_DATA_KEY = "coc_teamData";
-
 export function saveTeamData(data) {
   try {
     // Only persist the fields we need — never store the session token here

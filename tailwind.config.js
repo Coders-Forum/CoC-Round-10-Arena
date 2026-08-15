@@ -7,6 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        sans: ['Clash', 'Clash Display', 'sans-serif'],
         clash: ['Clash', 'Clash Display', 'sans-serif'],
       },
     },

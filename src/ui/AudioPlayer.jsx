@@ -51,7 +51,7 @@ export default function AudioPlayer() {
                     borderRadius: "50px",
                     padding: "10px 24px",
                     color: "#e8c84a",
-                    fontFamily: "sans-serif",
+                    fontFamily: "'Clash', 'Clash Display', sans-serif",
                     fontSize: "14px",
                     fontWeight: "bold",
                     cursor: "pointer",

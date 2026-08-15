@@ -7,6 +7,7 @@ import {
   REASON_MESSAGES,
   saveTeamData,
 } from "../utils/sessionSecurity";
+import { validateContestParams } from "../config/contestConfig";
 
 // ── 1. Input Sanitization ─────────────────────────────────────
 function sanitize(raw) {
@@ -420,9 +421,10 @@ export default function Login() {
         const safeName = encodeForDisplay(data.teamName ?? "");
         setStage("success");
         setStatusMsg(`⚔ Welcome, ${safeName}!`);
-        // replace: true so back button on dashboard won't return to login
+        // replace: true so back button on dashboard won't return to login; preserve validated round/phase query params
+        const validated = validateContestParams(location.search);
         setTimeout(
-          () => navigate("/arena", { state: data, replace: true }),
+          () => navigate(`/arena${validated.queryString}`, { state: data, replace: true }),
           1200,
         );
       } else {
@@ -466,7 +468,7 @@ export default function Login() {
     } finally {
       submitGuard.current = false;
     }
-  }, [form, stage, navigate]);
+  }, [form, stage, navigate, location]);
 
   const handleKeyDown = useCallback(
     (e) => {
@@ -558,10 +560,20 @@ export default function Login() {
               CLASH OF CODERS
             </span>
             <h1 className="text-[#FFC451] text-3xl font-clash tracking-wide drop-shadow-[0_0_20px_rgba(255,196,81,0.25)]">
-              ROUND 1 LOGIN
+              {(() => {
+                const { round, phase } = validateContestParams(location.search);
+                if (round === "2" && phase) return `ROUND 2 — PHASE ${phase} LOGIN`;
+                if (round === "0") return "ROUND 0 LOGIN";
+                return "ROUND 1 LOGIN";
+              })()}
             </h1>
-            <p className="text-white/25 text-xs mt-1 font-clash tracking-widest">
-              CODE WARFARE · THE STRATEGIC CONQUEST
+            <p className="text-white/25 text-xs mt-1 font-clash tracking-widest uppercase">
+              {(() => {
+                const { round, phase } = validateContestParams(location.search);
+                if (round === "2") return `OFFLINE STAGE · PHASE ${phase || "1"} BATTLE`;
+                if (round === "0") return "CODEFRONT · ONLINE GFG STAGE";
+                return "CODE WARFARE · THE STRATEGIC CONQUEST";
+              })()}
             </p>
           </div>
 
@@ -698,8 +710,13 @@ export default function Login() {
             </button>
           </div>
 
-          <p className="text-center text-[#FFC451]/35 text-[0.6rem] font-clash tracking-widest mt-5">
-            CLASH OF CODERS · ROUND 1 · SECURED LOGIN
+          <p className="text-center text-[#FFC451]/35 text-[0.6rem] font-clash tracking-widest mt-5 uppercase">
+            CLASH OF CODERS · {(() => {
+              const { round, phase } = validateContestParams(location.search);
+              if (round === "2") return `ROUND 2 PHASE ${phase || "1"}`;
+              if (round === "0") return "ROUND 0";
+              return "ROUND 1";
+            })()} · SECURED LOGIN
           </p>
         </div>
       </div>

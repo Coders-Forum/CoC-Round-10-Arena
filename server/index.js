@@ -57,6 +57,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
+  "https://codersforum.netlify.app",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -79,15 +80,16 @@ app.use(cors({
     ) {
       callback(null, true);
     } else {
-      callback(null, true);
+      callback(new Error("Not allowed by CORS"), false);
     }
   },
-  methods: ["POST", "GET", "OPTIONS"],
+  methods: ["POST", "GET", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
     "X-Requested-With",
     "X-Request-Nonce",
-    "X-Session-Token"
+    "X-Session-Token",
+    "X-Admin-Token"
   ],
   credentials: false,
 }));
@@ -103,7 +105,7 @@ app.use(rateLimit({
 }));
 
 app.use((req, res, next) => {
-  if (req.method === "POST") {
+  if (req.method === "POST" || req.method === "PATCH") {
     if (req.headers["x-requested-with"] !== "XMLHttpRequest") {
       return res.status(403).json({ success: false, message: "Forbidden." });
     }
@@ -207,7 +209,15 @@ setInterval(() => {
   for (const [token, s] of SESSIONS.entries()) {
     if (now > s.expiresAt) SESSIONS.delete(token);
   }
-}, 30 * 60 * 1000);
+  for (const [token, s] of ADMIN_SESSIONS.entries()) {
+    if (now > s.expiresAt) ADMIN_SESSIONS.delete(token);
+  }
+  for (const [ip, entry] of FAILED_LOGINS.entries()) {
+    if (entry.lockedUntil && now > entry.lockedUntil) {
+      FAILED_LOGINS.delete(ip);
+    }
+  }
+}, 15 * 60 * 1000);
 
 const FAILED_LOGINS = new Map();
 const MAX_FAILS = 8;
@@ -235,7 +245,7 @@ function clearServerFails(ip) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  RATE LIMITER for /login
+//  RATE LIMITERS
 // ═══════════════════════════════════════════════════════════════
 const loginLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
@@ -243,6 +253,15 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many login attempts. Wait 10 minutes." },
+});
+
+// Strict limiter for admin login — 5 attempts per 15 minutes per IP
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many admin login attempts. Wait 15 minutes." },
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -347,10 +366,13 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
   clearServerFails(ip);
 
   const token = generateToken();
+  const safeUserData = { ...user };
+  delete safeUserData.passwordHash;
+
   SESSIONS.set(token, {
     username: user.username,
     teamName: user.teamName,
-    userData: user,
+    userData: safeUserData,
     expiresAt: Date.now() + SESSION_TTL,
   });
 
@@ -366,6 +388,279 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
     score: user.score,
     rank: user.rank,
     totalLands: user.totalLands,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  CONTEST STAGE MANAGEMENT (Admin-Controlled Single Source of Truth)
+// ═══════════════════════════════════════════════════════════════
+const ALLOWED_STAGES = ["round0", "round1", "round2_phase1", "round2_phase2", "round2_phase3"];
+let memoryActiveStage = "round1";
+
+const ADMIN_SESSIONS = new Map();
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || "admin").toLowerCase();
+const ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD || "Admin@COC2026");
+const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
+
+async function getActiveContestStage() {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("contest_state")
+        .select("active_stage")
+        .eq("id", "current")
+        .maybeSingle();
+
+      if (!error && data?.active_stage && ALLOWED_STAGES.includes(data.active_stage)) {
+        memoryActiveStage = data.active_stage;
+      }
+    } catch (err) {
+      console.error("[Supabase Stage Query Error]:", err.message);
+    }
+  }
+  return memoryActiveStage;
+}
+
+async function setActiveContestStage(newStage) {
+  if (!ALLOWED_STAGES.includes(newStage)) {
+    throw new Error(`Invalid stage: ${newStage}`);
+  }
+
+  if (supabase) {
+    const { error } = await supabase
+      .from("contest_state")
+      .upsert(
+        {
+          id: "current",
+          active_stage: newStage,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+    if (error) {
+      console.error("[Supabase Stage Save Error]:", error.message);
+      throw new Error(`Database error saving stage: ${error.message}`);
+    }
+  }
+
+  memoryActiveStage = newStage;
+  return memoryActiveStage;
+}
+
+function requireAdmin(req, res, next) {
+  const token =
+    req.headers["x-admin-token"] ||
+    req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Admin authorization required." });
+  }
+
+  const session = ADMIN_SESSIONS.get(token);
+  if (!session || Date.now() > session.expiresAt) {
+    if (session) ADMIN_SESSIONS.delete(token);
+    return res.status(401).json({ success: false, message: "Admin session expired or invalid." });
+  }
+
+  req.adminUser = session.username;
+  next();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PUBLIC CONTEST STATUS API
+// ═══════════════════════════════════════════════════════════════
+app.get(["/contest/status", "/api/contest/status", "/api/contest-status"], async (_req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  const stage = await getActiveContestStage();
+  return res.json({
+    success: true,
+    activeStage: stage,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  ADMIN AUTHENTICATION & STAGE CONTROL APIS
+// ═══════════════════════════════════════════════════════════════
+app.post(["/admin/login", "/api/admin/login"], adminLoginLimiter, async (req, res) => {
+  const ip = req.ip ?? "unknown";
+
+  if (checkServerLockout(ip)) {
+    return res.status(429).json({
+      success: false,
+      message: "Too many failed attempts. Try again later.",
+    });
+  }
+
+  const rawUsername = sanitize(req.body?.username ?? "");
+  const rawPassword = typeof req.body?.password === "string" ? req.body.password : "";
+
+  if (!rawUsername || !rawPassword) {
+    return res.status(400).json({ success: false, message: "Username and password are required." });
+  }
+
+  const username = rawUsername.toLowerCase();
+  const incomingHash = hashPassword(rawPassword);
+
+  const isUserMatch = safeCompare(username, ADMIN_USERNAME);
+  const isPassMatch = safeCompare(incomingHash, ADMIN_PASSWORD_HASH);
+
+  if (!isUserMatch || !isPassMatch) {
+    recordServerFail(ip);
+    console.warn(`[${new Date().toISOString()}] FAILED admin login attempt for user "${username}" from ${ip}`);
+    return res.status(401).json({ success: false, message: "Invalid admin credentials." });
+  }
+
+  clearServerFails(ip);
+
+  const token = generateToken();
+  ADMIN_SESSIONS.set(token, {
+    username,
+    role: "admin",
+    expiresAt: Date.now() + ADMIN_SESSION_TTL,
+  });
+
+  const currentStage = await getActiveContestStage();
+  console.log(`[${new Date().toISOString()}] ADMIN LOGIN OK: ${username}`);
+
+  return res.json({
+    success: true,
+    adminToken: token,
+    role: "admin",
+    activeStage: currentStage,
+    message: "Admin authenticated.",
+  });
+});
+
+app.get(["/admin/verify", "/api/admin/verify"], requireAdmin, async (_req, res) => {
+  const currentStage = await getActiveContestStage();
+  return res.json({
+    success: true,
+    role: "admin",
+    activeStage: currentStage,
+  });
+});
+
+app.post(["/admin/logout", "/api/admin/logout"], (req, res) => {
+  const token =
+    req.headers["x-admin-token"] ||
+    req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+  if (token) ADMIN_SESSIONS.delete(token);
+  return res.json({ success: true, message: "Admin logged out." });
+});
+
+// Update active contest stage (PATCH & POST)
+app.all(["/admin/contest/stage", "/api/admin/contest/stage", "/api/admin/stage"], requireAdmin, async (req, res) => {
+  if (req.method !== "PATCH" && req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
+  }
+
+  const targetStage = req.body?.activeStage;
+
+  if (!targetStage || typeof targetStage !== "string" || !ALLOWED_STAGES.includes(targetStage)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid stage: "${targetStage}". Allowed values: ${ALLOWED_STAGES.join(", ")}`,
+    });
+  }
+
+  try {
+    const updatedStage = await setActiveContestStage(targetStage);
+    console.log(`[${new Date().toISOString()}] 🚀 ADMIN UPDATED ACTIVE STAGE TO: "${updatedStage}" (by ${req.adminUser})`);
+    return res.json({
+      success: true,
+      activeStage: updatedStage,
+      message: `Active stage updated to ${updatedStage}.`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update stage:", err.message);
+    return res.status(500).json({ success: false, message: "Failed to update contest stage." });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  CONTEST ACCESS & ELIGIBILITY VERIFICATION API
+// ═══════════════════════════════════════════════════════════════
+app.all(["/contest/verify-access", "/api/contest/verify-access", "/api/contest/access"], async (req, res) => {
+  const token =
+    req.headers["x-session-token"] ||
+    req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      allowed: false,
+      message: "Authentication session required.",
+    });
+  }
+
+  const session = SESSIONS.get(token);
+  if (!session || Date.now() > session.expiresAt) {
+    if (session) SESSIONS.delete(token);
+    return res.status(401).json({
+      success: false,
+      allowed: false,
+      message: "Session expired. Please log in again.",
+    });
+  }
+
+  const user = session.userData || USERS.get(session.username);
+  if (!user) {
+    return res.status(404).json({ success: false, allowed: false, message: "Team record not found." });
+  }
+
+  if (user.status === "disqualified") {
+    return res.status(403).json({
+      success: false,
+      allowed: false,
+      message: "This team is disqualified from the contest.",
+    });
+  }
+
+  // Parse requested stage
+  const rawRound = req.body?.round || req.query?.round;
+  const rawPhase = req.body?.phase || req.query?.phase;
+
+  let requestedStage = "round1";
+  if (String(rawRound) === "2" && String(rawPhase) === "3") {
+    requestedStage = "round2_phase3";
+  } else if (String(rawRound) === "2" && String(rawPhase) === "2") {
+    requestedStage = "round2_phase2";
+  } else if (String(rawRound) === "2" && String(rawPhase) === "1") {
+    requestedStage = "round2_phase1";
+  } else if (String(rawRound) === "0") {
+    requestedStage = "round0";
+  } else {
+    requestedStage = "round1";
+  }
+
+  const activeStage = await getActiveContestStage();
+
+  if (requestedStage !== activeStage) {
+    const stageTitles = {
+      round0: "Round 0 (Online Codefront — GFG)",
+      round1: "Round 1 (Code Warfare)",
+      round2_phase1: "Round 2 — Phase 1",
+      round2_phase2: "Round 2 — Phase 2",
+      round2_phase3: "Round 2 — Phase 3",
+    };
+
+    return res.status(403).json({
+      success: false,
+      allowed: false,
+      activeStage,
+      requestedStage,
+      message: `${stageTitles[requestedStage] || requestedStage} is not currently active. Active stage: ${stageTitles[activeStage] || activeStage}.`,
+    });
+  }
+
+  return res.json({
+    success: true,
+    allowed: true,
+    activeStage,
+    requestedStage,
+    teamName: user.teamName,
   });
 });
 
@@ -410,6 +705,9 @@ if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
   const PORT = process.env.PORT ?? 5000;
   app.listen(PORT, () => {
     const isDev = process.env.NODE_ENV !== "production";
+    if (!process.env.ADMIN_PASSWORD || !process.env.PEPPER) {
+      console.warn("⚠️ [SECURITY WARNING] Using default fallback ADMIN_PASSWORD or PEPPER. Set these in .env for production.");
+    }
     console.log(`
 ╔══════════════════════════════════════╗
 ║   🔒 COC Backend — Secured Server   ║
@@ -418,10 +716,11 @@ if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
 ║  DATABASE: ${supabase ? "SUPABASE CLOUD DB ⚡" : "IN-MEMORY STORE 💾"}
 ${isDev ? `║  TEST ACCOUNT: testteam (dev only)    ` : ""}
 ╠══════════════════════════════════════╣
-║  POST /api/login   — team login      ║
-║  POST /api/logout  — end session     ║
-║  GET  /api/me      — session info    ║
-║  GET  /api/health  — health check    ║
+║  GET  /api/contest/status  — active  ║
+║  POST /api/admin/login     — admin   ║
+║  PATCH/api/admin/stage     — change  ║
+║  POST /api/contest/access  — verify  ║
+║  POST /api/login           — team    ║
 ╚══════════════════════════════════════╝
     `);
   });

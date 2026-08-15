@@ -1,6 +1,7 @@
 import { Suspense, useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
-import { clearSession } from "../utils/sessionSecurity.js"
+import { useNavigate, useLocation } from "react-router-dom"
+import { clearSession, SESSION_KEY } from "../utils/sessionSecurity.js"
+import { getLandContestUrl, validateContestParams, CONTEST_CONFIG } from "../config/contestConfig.js"
 import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
@@ -230,6 +231,13 @@ function DesktopScrollLayout() {
     const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
     const sectionRefs = useRef([])
     const [activeLandIdx, setActiveLandIdx] = useState(0)
+    const location = useLocation()
+    const { round, phase } = validateContestParams(location.search)
+
+    const handleEnterLand = (landKey) => {
+        const url = getLandContestUrl(round, phase, landKey)
+        window.open(url, "_blank", "noopener,noreferrer")
+    }
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -337,21 +345,24 @@ function DesktopScrollLayout() {
                                         nextArena={nextArena}
                                         width="100%"
                                     />
-                                    <button style={{
-                                        background: "rgba(0,0,0,0.85)",
-                                        border: `1px solid ${accent}`,
-                                        borderRadius: "30px",
-                                        padding: "14px 32px",
-                                        color: "#ffffff",
-                                        fontFamily: "'Clash Display', sans-serif",
-                                        fontSize: "13px",
-                                        fontWeight: "bold",
-                                        letterSpacing: "2px",
-                                        cursor: "pointer",
-                                        textTransform: "uppercase",
-                                        boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
-                                        transition: "all 0.3s ease"
-                                    }}>
+                                    <button
+                                        onClick={() => handleEnterLand(arena.id)}
+                                        style={{
+                                            background: "rgba(0,0,0,0.85)",
+                                            border: `1px solid ${accent}`,
+                                            borderRadius: "30px",
+                                            padding: "14px 32px",
+                                            color: "#ffffff",
+                                            fontFamily: "'Clash Display', sans-serif",
+                                            fontSize: "13px",
+                                            fontWeight: "bold",
+                                            letterSpacing: "2px",
+                                            cursor: "pointer",
+                                            textTransform: "uppercase",
+                                            boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
+                                            transition: "all 0.3s ease"
+                                        }}
+                                    >
                                         {arena.btnText}
                                     </button>
                                 </div>
@@ -382,6 +393,13 @@ function DesktopScrollLayout() {
 function CarouselLayout() {
     const [activeIdx, setActiveIdx] = useState(0)
     const touchStartX = useRef(0)
+    const location = useLocation()
+    const { round, phase } = validateContestParams(location.search)
+
+    const handleEnterLand = (landKey) => {
+        const url = getLandContestUrl(round, phase, landKey)
+        window.open(url, "_blank", "noopener,noreferrer")
+    }
 
     const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
 
@@ -481,14 +499,19 @@ function CarouselLayout() {
                     gap: "16px", width: "100%", maxWidth: "360px"
                 }}>
                     <ArenaCard side="left" {...currentArena.card} width="100%" />
-                    <button style={{
-                        background: "rgba(0,0,0,0.85)", border: `1px solid ${accent}`,
-                        borderRadius: "30px", padding: "12px 28px", color: "#fff",
-                        fontFamily: "'Clash Display', sans-serif", fontSize: "12px", fontWeight: "bold",
-                        letterSpacing: "2px", cursor: "pointer", textTransform: "uppercase",
-                        boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
-                        transition: "all 0.3s ease"
-                    }}>{currentArena.btnText}</button>
+                    <button
+                        onClick={() => handleEnterLand(currentArena.id)}
+                        style={{
+                            background: "rgba(0,0,0,0.85)", border: `1px solid ${accent}`,
+                            borderRadius: "30px", padding: "12px 28px", color: "#fff",
+                            fontFamily: "'Clash Display', sans-serif", fontSize: "12px", fontWeight: "bold",
+                            letterSpacing: "2px", cursor: "pointer", textTransform: "uppercase",
+                            boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
+                            transition: "all 0.3s ease"
+                        }}
+                    >
+                        {currentArena.btnText}
+                    </button>
                 </div>
 
                 {/* Indicator Pills */}
@@ -517,17 +540,158 @@ function CarouselLayout() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Dedicated Round 0 (GFG External) View
+// ─────────────────────────────────────────────────────────────────────
+function Round0GFGView() {
+    const gfgUrl = CONTEST_CONFIG.round0?.contestUrl || "https://practice.geeksforgeeks.org/contest/clash-of-coders-round0"
+
+    return (
+        <div style={{
+            minHeight: "100vh",
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            boxSizing: "border-box",
+            backgroundColor: "#0B0F1A",
+            color: "#fff",
+            fontFamily: "'Clash', 'Clash Display', sans-serif",
+            textAlign: "center",
+            position: "relative",
+            overflow: "hidden"
+        }}>
+            {/* Ambient Background Glow */}
+            <div style={{
+                position: "absolute",
+                top: "30%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "500px",
+                height: "500px",
+                background: "radial-gradient(circle, rgba(255, 196, 81, 0.12) 0%, transparent 70%)",
+                pointerEvents: "none",
+                zIndex: 0
+            }} />
+
+            <div style={{
+                position: "relative",
+                zIndex: 1,
+                maxWidth: "520px",
+                width: "100%",
+                padding: "44px 32px",
+                borderRadius: "20px",
+                background: "rgba(17, 24, 39, 0.9)",
+                border: "1px solid rgba(255, 196, 81, 0.3)",
+                boxShadow: "0 25px 60px rgba(0,0,0,0.8), 0 0 35px rgba(255, 196, 81, 0.15)",
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)"
+            }}>
+                <div style={{
+                    display: "inline-block",
+                    padding: "5px 16px",
+                    borderRadius: "100px",
+                    background: "rgba(255, 196, 81, 0.15)",
+                    border: "1px solid rgba(255, 196, 81, 0.4)",
+                    color: "#FFC451",
+                    fontSize: "11px",
+                    fontWeight: "800",
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    marginBottom: "18px"
+                }}>
+                    ROUND 0 · ONLINE GFG
+                </div>
+
+                <h1 style={{
+                    fontSize: "30px",
+                    fontWeight: "800",
+                    color: "#FFFFFF",
+                    letterSpacing: "1px",
+                    marginBottom: "10px",
+                    textShadow: "0 0 20px rgba(255, 196, 81, 0.3)"
+                }}>
+                    ROUND 0 IS LIVE ⚔
+                </h1>
+
+                <p style={{
+                    color: "#9CA3AF",
+                    fontSize: "14px",
+                    lineHeight: "1.7",
+                    marginBottom: "30px"
+                }}>
+                    Round 0 is hosted externally on GeeksforGeeks. Click below to enter the official contest arena and solve the preliminary challenges.
+                </p>
+
+                <a
+                    href={gfgUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "10px",
+                        background: "#FFC451",
+                        color: "#000000",
+                        fontWeight: "800",
+                        fontSize: "15px",
+                        letterSpacing: "0.08em",
+                        padding: "16px 36px",
+                        borderRadius: "50px",
+                        textDecoration: "none",
+                        boxShadow: "0 0 25px rgba(255, 196, 81, 0.45)",
+                        transition: "all 0.25s ease",
+                        cursor: "pointer"
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "scale(1.04)"
+                        e.currentTarget.style.boxShadow = "0 0 35px rgba(255, 196, 81, 0.7)"
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "scale(1)"
+                        e.currentTarget.style.boxShadow = "0 0 25px rgba(255, 196, 81, 0.45)"
+                    }}
+                >
+                    <span>ENTER ROUND 0 ON GFG</span>
+                    <span style={{ fontSize: "18px" }}>↗</span>
+                </a>
+
+                <p style={{
+                    color: "#6B7280",
+                    fontSize: "11px",
+                    letterSpacing: "0.05em",
+                    marginTop: "22px"
+                }}>
+                    * Official challenge link will open in a new tab
+                </p>
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Main Scene — switches between scroll and carousel based on screen width
 // ─────────────────────────────────────────────────────────────────────
 export default function Scene() {
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < CAROUSEL_BREAKPOINT : false
     )
+    const [accessState, setAccessState] = useState({
+        checking: true,
+        allowed: true,
+        message: "",
+        activeStage: "round1"
+    })
+
     const navigate = useNavigate()
+    const location = useLocation()
+    const { round } = validateContestParams(location.search)
 
     const handleLogout = () => {
         clearSession()
-        navigate("/", { state: { reason: "logout" } })
+        const validated = validateContestParams(location.search)
+        navigate(`/login${validated.queryString}`, { state: { reason: "logout" } })
     }
 
     useEffect(() => {
@@ -537,6 +701,73 @@ export default function Scene() {
         setIsSmallScreen(mq.matches)
         return () => mq.removeEventListener("change", handler)
     }, [])
+
+    // ── Backend Stage & Eligibility Verification ──
+    useEffect(() => {
+        let isMounted = true
+        async function verifyStageAccess() {
+            const token = sessionStorage.getItem(SESSION_KEY)
+            const { round, phase } = validateContestParams(location.search)
+            const apiUrl = import.meta.env.VITE_API_URL !== undefined
+                ? import.meta.env.VITE_API_URL
+                : (import.meta.env.DEV ? "http://localhost:5000" : "");
+
+            try {
+                const res = await fetch(`${apiUrl}/api/contest/verify-access`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Session-Token": token || "",
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                    body: JSON.stringify({ round, phase }),
+                })
+
+                const data = await res.json()
+
+                if (isMounted) {
+                    if (data.allowed) {
+                        setAccessState({
+                            checking: false,
+                            allowed: true,
+                            message: "",
+                            activeStage: data.activeStage || "round1"
+                        })
+                    } else {
+                        setAccessState({
+                            checking: false,
+                            allowed: false,
+                            message: data.message || "The requested contest stage is not currently active.",
+                            activeStage: data.activeStage || "round1"
+                        })
+                    }
+                }
+            } catch {
+                // If offline or unreachable, default to fail-safe
+                if (isMounted) {
+                    setAccessState({
+                        checking: false,
+                        allowed: true, // fallback to allow local testing if backend offline
+                        message: "",
+                        activeStage: "round1"
+                    })
+                }
+            }
+        }
+
+        verifyStageAccess()
+        return () => { isMounted = false }
+    }, [location.search])
+
+    function getStageQuery(stage) {
+        switch (stage) {
+            case "round0": return "?round=0"
+            case "round2_phase1": return "?round=2&phase=1"
+            case "round2_phase2": return "?round=2&phase=2"
+            case "round2_phase3": return "?round=2&phase=3"
+            default: return "?round=1"
+        }
+    }
 
     return (
         <>
@@ -577,7 +808,7 @@ export default function Scene() {
                         letterSpacing: "0.2em",
                         textShadow: "0 0 16px rgba(255,196,81,0.25)"
                     }}>
-                        3D ARENA
+                        {round === "0" ? "ROUND 0" : "3D ARENA"}
                     </span>
                 </div>
 
@@ -617,7 +848,60 @@ export default function Scene() {
                 </button>
             </header>
 
-            {isSmallScreen ? <CarouselLayout /> : <DesktopScrollLayout />}
+            {/* ── ACCESS DENIED / INACTIVE STAGE OVERLAY ── */}
+            {!accessState.checking && !accessState.allowed ? (
+                <div style={{
+                    minHeight: "100vh",
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "20px",
+                    boxSizing: "border-box",
+                    backgroundColor: "#0B0F1A",
+                    color: "#fff",
+                    fontFamily: "'Clash', 'Clash Display', sans-serif",
+                    textAlign: "center"
+                }}>
+                    <div style={{
+                        maxWidth: "480px",
+                        padding: "36px 28px",
+                        borderRadius: "16px",
+                        background: "rgba(17, 24, 39, 0.85)",
+                        border: "1px solid rgba(239, 68, 68, 0.4)",
+                        boxShadow: "0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(239,68,68,0.2)"
+                    }}>
+                        <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔒</div>
+                        <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#EF4444", marginBottom: "12px", letterSpacing: "1px" }}>
+                            STAGE NOT ACTIVE
+                        </h2>
+                        <p style={{ color: "#D1D5DB", fontSize: "14px", lineHeight: "1.6", marginBottom: "24px" }}>
+                            {accessState.message}
+                        </p>
+                        <button
+                            onClick={() => navigate(`/arena${getStageQuery(accessState.activeStage)}`, { replace: true })}
+                            style={{
+                                background: "#FFC451",
+                                color: "#000",
+                                fontWeight: "800",
+                                fontSize: "14px",
+                                padding: "14px 28px",
+                                borderRadius: "30px",
+                                border: "none",
+                                cursor: "pointer",
+                                boxShadow: "0 0 20px rgba(255,196,81,0.4)",
+                                transition: "all 0.2s ease"
+                            }}
+                        >
+                            GO TO ACTIVE STAGE →
+                        </button>
+                    </div>
+                </div>
+            ) : round === "0" ? (
+                <Round0GFGView />
+            ) : (
+                isSmallScreen ? <CarouselLayout /> : <DesktopScrollLayout />
+            )}
         </>
     )
 }
