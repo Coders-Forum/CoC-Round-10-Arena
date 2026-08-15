@@ -58,22 +58,26 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
   "https://codersforum.netlify.app",
+  "https://kevincodez-ai.github.io",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow same-origin, localhost, all vercel.app preview/production URLs, or explicit FRONTEND_URL
-    let isVercel = false;
+    // Allow same-origin, localhost, all vercel.app & github.io domains, or explicit FRONTEND_URL
+    let isAllowedDomain = false;
     try {
-      if (origin) isVercel = /\.vercel\.app$/.test(new URL(origin).hostname);
+      if (origin) {
+        const hostname = new URL(origin).hostname;
+        isAllowedDomain = /\.vercel\.app$/.test(hostname) || /\.github\.io$/.test(hostname);
+      }
     } catch {
-      isVercel = false;
+      isAllowedDomain = false;
     }
 
     if (
       !origin ||
-      isVercel ||
+      isAllowedDomain ||
       allowedOrigins.includes(origin) ||
       /^https?:\/\/(localhost|127\.0\.0\.1)(:[0-9]+)?$/.test(origin) ||
       (process.env.VERCEL_URL && origin.includes(process.env.VERCEL_URL))
