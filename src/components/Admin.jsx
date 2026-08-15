@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getLandingPageUrl } from "../config/contestConfig";
 
 export default function Admin() {
   const [adminToken, setAdminToken] = useState(() => {
@@ -180,7 +181,31 @@ export default function Admin() {
           boxShadow: "0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(255,196,81,0.15)",
         }}
       >
-        {/* Header */}
+        {/* Navigation & Header */}
+        <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "16px" }}>
+          <a
+            href={getLandingPageUrl()}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              color: "#FFC451",
+              fontSize: "11px",
+              fontWeight: "700",
+              letterSpacing: "0.1em",
+              textDecoration: "none",
+              padding: "5px 12px",
+              borderRadius: "100px",
+              background: "rgba(255, 196, 81, 0.08)",
+              border: "1px solid rgba(255, 196, 81, 0.25)",
+              transition: "all 0.2s ease",
+            }}
+          >
+            <span>←</span>
+            <span>LANDING PAGE</span>
+          </a>
+        </div>
+
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
           <span
             style={{

@@ -1,7 +1,7 @@
 import { Suspense, useState, useEffect, useRef } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { clearSession, SESSION_KEY } from "../utils/sessionSecurity.js"
-import { getLandContestUrl, validateContestParams, CONTEST_CONFIG } from "../config/contestConfig.js"
+import { getLandContestUrl, validateContestParams, CONTEST_CONFIG, getLandingPageUrl } from "../config/contestConfig.js"
 import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
@@ -665,6 +665,30 @@ function Round0GFGView() {
                 }}>
                     * Official challenge link will open in a new tab
                 </p>
+
+                <div style={{ marginTop: "24px" }}>
+                    <a
+                        href={getLandingPageUrl("?round=0")}
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            color: "#FFC451",
+                            fontSize: "12px",
+                            fontWeight: "700",
+                            letterSpacing: "0.1em",
+                            textDecoration: "none",
+                            padding: "8px 18px",
+                            borderRadius: "100px",
+                            background: "rgba(255,196,81,0.08)",
+                            border: "1px solid rgba(255,196,81,0.25)",
+                            transition: "all 0.2s ease"
+                        }}
+                    >
+                        <span>←</span>
+                        <span>BACK TO LANDING PAGE</span>
+                    </a>
+                </div>
             </div>
         </div>
     )
@@ -781,7 +805,7 @@ export default function Scene() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: isSmallScreen ? "12px 18px" : "14px 32px",
+                padding: isSmallScreen ? "12px 14px" : "14px 32px",
                 background: "linear-gradient(180deg, rgba(17,24,39,0.85) 0%, rgba(17,24,39,0.3) 70%, transparent 100%)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
@@ -812,40 +836,75 @@ export default function Scene() {
                     </span>
                 </div>
 
-                <button
-                    onClick={handleLogout}
-                    title="Logout from arena"
-                    aria-label="Logout"
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        background: "rgba(0,0,0,0.5)",
-                        border: "1px solid rgba(255,196,81,0.25)",
-                        color: "#FFC451",
-                        fontSize: "11px",
-                        fontWeight: "600",
-                        letterSpacing: "0.12em",
-                        padding: "6px 14px",
-                        borderRadius: "100px",
-                        cursor: "pointer",
-                        transition: "all 0.25s ease",
-                        boxShadow: "0 2px 10px rgba(0,0,0,0.4)"
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "#DC2626"
-                        e.currentTarget.style.background = "rgba(220,38,38,0.25)"
-                        e.currentTarget.style.boxShadow = "0 0 15px rgba(220,38,38,0.35)"
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "rgba(255,196,81,0.25)"
-                        e.currentTarget.style.background = "rgba(0,0,0,0.5)"
-                        e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.4)"
-                    }}
-                >
-                    <span style={{ fontSize: "12px", opacity: 0.85 }}>🚪</span>
-                    <span>LOGOUT</span>
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <a
+                        href={getLandingPageUrl(location.search)}
+                        title="Return to Main Landing Page"
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            background: "rgba(255,196,81,0.08)",
+                            border: "1px solid rgba(255,196,81,0.3)",
+                            color: "#FFC451",
+                            fontSize: "11px",
+                            fontWeight: "600",
+                            letterSpacing: "0.12em",
+                            padding: "6px 14px",
+                            borderRadius: "100px",
+                            textDecoration: "none",
+                            cursor: "pointer",
+                            transition: "all 0.25s ease",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.3)"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = "#FFC451"
+                            e.currentTarget.style.background = "rgba(255,196,81,0.2)"
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = "rgba(255,196,81,0.3)"
+                            e.currentTarget.style.background = "rgba(255,196,81,0.08)"
+                        }}
+                    >
+                        <span>←</span>
+                        <span>LANDING PAGE</span>
+                    </a>
+
+                    <button
+                        onClick={handleLogout}
+                        title="Logout from arena"
+                        aria-label="Logout"
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            background: "rgba(0,0,0,0.5)",
+                            border: "1px solid rgba(255,196,81,0.25)",
+                            color: "#FFC451",
+                            fontSize: "11px",
+                            fontWeight: "600",
+                            letterSpacing: "0.12em",
+                            padding: "6px 14px",
+                            borderRadius: "100px",
+                            cursor: "pointer",
+                            transition: "all 0.25s ease",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.4)"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = "#DC2626"
+                            e.currentTarget.style.background = "rgba(220,38,38,0.25)"
+                            e.currentTarget.style.boxShadow = "0 0 15px rgba(220,38,38,0.35)"
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = "rgba(255,196,81,0.25)"
+                            e.currentTarget.style.background = "rgba(0,0,0,0.5)"
+                            e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.4)"
+                        }}
+                    >
+                        <span style={{ fontSize: "12px", opacity: 0.85 }}>🚪</span>
+                        <span>LOGOUT</span>
+                    </button>
+                </div>
             </header>
 
             {/* ── ACCESS DENIED / INACTIVE STAGE OVERLAY ── */}
@@ -878,23 +937,47 @@ export default function Scene() {
                         <p style={{ color: "#D1D5DB", fontSize: "14px", lineHeight: "1.6", marginBottom: "24px" }}>
                             {accessState.message}
                         </p>
-                        <button
-                            onClick={() => navigate(`/arena${getStageQuery(accessState.activeStage)}`, { replace: true })}
-                            style={{
-                                background: "#FFC451",
-                                color: "#000",
-                                fontWeight: "800",
-                                fontSize: "14px",
-                                padding: "14px 28px",
-                                borderRadius: "30px",
-                                border: "none",
-                                cursor: "pointer",
-                                boxShadow: "0 0 20px rgba(255,196,81,0.4)",
-                                transition: "all 0.2s ease"
-                            }}
-                        >
-                            GO TO ACTIVE STAGE →
-                        </button>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
+                            <button
+                                onClick={() => navigate(`/arena${getStageQuery(accessState.activeStage)}`, { replace: true })}
+                                style={{
+                                    width: "100%",
+                                    background: "#FFC451",
+                                    color: "#000",
+                                    fontWeight: "800",
+                                    fontSize: "14px",
+                                    padding: "14px 28px",
+                                    borderRadius: "30px",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    boxShadow: "0 0 20px rgba(255,196,81,0.4)",
+                                    transition: "all 0.2s ease"
+                                }}
+                            >
+                                GO TO ACTIVE STAGE →
+                            </button>
+
+                            <a
+                                href={getLandingPageUrl(location.search)}
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    color: "#9CA3AF",
+                                    fontSize: "12px",
+                                    fontWeight: "700",
+                                    textDecoration: "none",
+                                    padding: "8px 16px",
+                                    borderRadius: "100px",
+                                    background: "rgba(255,255,255,0.05)",
+                                    border: "1px solid rgba(255,255,255,0.1)",
+                                    transition: "all 0.2s ease"
+                                }}
+                            >
+                                <span>←</span>
+                                <span>BACK TO LANDING PAGE</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             ) : round === "0" ? (

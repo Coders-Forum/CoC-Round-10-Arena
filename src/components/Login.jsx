@@ -7,7 +7,7 @@ import {
   REASON_MESSAGES,
   saveTeamData,
 } from "../utils/sessionSecurity";
-import { validateContestParams } from "../config/contestConfig";
+import { validateContestParams, getLandingPageUrl } from "../config/contestConfig";
 
 // ── 1. Input Sanitization ─────────────────────────────────────
 function sanitize(raw) {
@@ -545,6 +545,17 @@ export default function Login() {
         </div>
 
         <div className="relative z-10 w-full max-w-sm">
+          {/* ── Back to Landing Page ── */}
+          <div className="mb-4 flex items-center justify-between">
+            <a
+              href={getLandingPageUrl(location.search)}
+              className="inline-flex items-center gap-1.5 text-xs text-[#FFC451]/75 hover:text-[#FFC451] transition-all duration-200 py-1 px-3 rounded-full bg-[#FFC451]/8 hover:bg-[#FFC451]/20 border border-[#FFC451]/20 font-clash"
+            >
+              <span>←</span>
+              <span className="tracking-wider uppercase">Landing Page</span>
+            </a>
+          </div>
+
           {/* ── Logout reason banner ── */}
           {reasonMsg && (
             <div className="mb-5 bg-[#FFC451]/8 border border-[#FFC451]/25 rounded-xl px-4 py-3 text-center">
