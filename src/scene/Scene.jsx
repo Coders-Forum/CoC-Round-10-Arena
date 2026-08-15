@@ -276,7 +276,6 @@ function DesktopScrollLayout() {
                 {ARENAS_LIST.map((arena, idx) => {
                     const LandComp = arena.LandComponent
                     const isEven = idx % 2 === 0
-                    const nextArena = idx < ARENAS_LIST.length - 1 ? ARENAS_LIST[idx + 1].card.title : null
                     const accent = arena.card.accentColor
                     const glow = arena.card.glowColor
 
@@ -342,7 +341,6 @@ function DesktopScrollLayout() {
                                     <ArenaCard
                                         side={isEven ? "right" : "left"}
                                         {...arena.card}
-                                        nextArena={nextArena}
                                         width="100%"
                                     />
                                     <a
@@ -441,10 +439,14 @@ function CarouselLayout() {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "center",
-                padding: "16px",
+                justifyContent: "flex-start",
+                paddingTop: "72px",
+                paddingBottom: "28px",
+                paddingLeft: "16px",
+                paddingRight: "16px",
                 boxSizing: "border-box",
                 overflowX: "hidden",
+                overflowY: "auto",
                 position: "relative"
             }}
         >
@@ -454,7 +456,7 @@ function CarouselLayout() {
             <div style={{
                 width: "100%", maxWidth: "600px",
                 display: "flex", flexDirection: "column", alignItems: "center",
-                zIndex: 2, position: "relative", gap: "16px", marginTop: "32px"
+                zIndex: 2, position: "relative", gap: "16px", marginTop: "8px"
             }}>
                 {/* Navigation */}
                 <div style={{
@@ -818,20 +820,20 @@ export default function Scene() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: isSmallScreen ? "12px 14px" : "14px 32px",
-                background: "linear-gradient(180deg, rgba(17,24,39,0.85) 0%, rgba(17,24,39,0.3) 70%, transparent 100%)",
+                padding: isSmallScreen ? "8px 12px" : "14px 32px",
+                background: "linear-gradient(180deg, rgba(17,24,39,0.9) 0%, rgba(17,24,39,0.5) 70%, transparent 100%)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
                 fontFamily: "'Clash', 'Clash Display', sans-serif",
                 pointerEvents: "auto"
             }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: isSmallScreen ? "6px" : "10px" }}>
                     <span style={{
                         background: "#FFC451",
                         color: "#000",
-                        fontSize: "10px",
+                        fontSize: isSmallScreen ? "9px" : "10px",
                         fontWeight: "800",
-                        padding: "3px 10px",
+                        padding: isSmallScreen ? "2px 8px" : "3px 10px",
                         borderRadius: "100px",
                         letterSpacing: "0.15em",
                         boxShadow: "0 0 12px rgba(255,196,81,0.35)"
@@ -840,30 +842,30 @@ export default function Scene() {
                     </span>
                     <span style={{
                         color: "#FFC451",
-                        fontSize: "13px",
+                        fontSize: isSmallScreen ? "11px" : "13px",
                         fontWeight: "700",
-                        letterSpacing: "0.2em",
+                        letterSpacing: isSmallScreen ? "0.12em" : "0.2em",
                         textShadow: "0 0 16px rgba(255,196,81,0.25)"
                     }}>
-                        {round === "0" ? "ROUND 0" : "3D ARENA"}
+                        {round === "0" ? "ROUND 0" : (isSmallScreen ? "ARENA" : "3D ARENA")}
                     </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: isSmallScreen ? "6px" : "10px" }}>
                     <a
                         href={getLandingPageUrl(location.search)}
                         title="Return to Main Landing Page"
                         style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: "5px",
+                            gap: "4px",
                             background: "rgba(255,196,81,0.08)",
                             border: "1px solid rgba(255,196,81,0.3)",
                             color: "#FFC451",
-                            fontSize: "11px",
+                            fontSize: isSmallScreen ? "10px" : "11px",
                             fontWeight: "600",
-                            letterSpacing: "0.12em",
-                            padding: "6px 14px",
+                            letterSpacing: "0.1em",
+                            padding: isSmallScreen ? "5px 9px" : "6px 14px",
                             borderRadius: "100px",
                             textDecoration: "none",
                             cursor: "pointer",
@@ -880,7 +882,7 @@ export default function Scene() {
                         }}
                     >
                         <span>←</span>
-                        <span>LANDING PAGE</span>
+                        <span>{isSmallScreen ? "LANDING" : "LANDING PAGE"}</span>
                     </a>
 
                     <button
@@ -890,14 +892,14 @@ export default function Scene() {
                         style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: "6px",
+                            gap: "4px",
                             background: "rgba(0,0,0,0.5)",
                             border: "1px solid rgba(255,196,81,0.25)",
                             color: "#FFC451",
-                            fontSize: "11px",
+                            fontSize: isSmallScreen ? "10px" : "11px",
                             fontWeight: "600",
-                            letterSpacing: "0.12em",
-                            padding: "6px 14px",
+                            letterSpacing: "0.1em",
+                            padding: isSmallScreen ? "5px 9px" : "6px 14px",
                             borderRadius: "100px",
                             cursor: "pointer",
                             transition: "all 0.25s ease",
@@ -914,7 +916,7 @@ export default function Scene() {
                             e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.4)"
                         }}
                     >
-                        <span style={{ fontSize: "12px", opacity: 0.85 }}>🚪</span>
+                        <span style={{ fontSize: isSmallScreen ? "10px" : "12px", opacity: 0.85 }}>🚪</span>
                         <span>LOGOUT</span>
                     </button>
                 </div>
