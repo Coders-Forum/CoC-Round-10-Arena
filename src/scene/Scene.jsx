@@ -345,9 +345,12 @@ function DesktopScrollLayout() {
                                         nextArena={nextArena}
                                         width="100%"
                                     />
-                                    <button
-                                        onClick={() => handleEnterLand(arena.id)}
+                                    <a
+                                        href={getLandContestUrl(round, phase, arena.id)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
                                         style={{
+                                            display: "inline-block",
                                             background: "rgba(0,0,0,0.85)",
                                             border: `1px solid ${accent}`,
                                             borderRadius: "30px",
@@ -359,12 +362,13 @@ function DesktopScrollLayout() {
                                             letterSpacing: "2px",
                                             cursor: "pointer",
                                             textTransform: "uppercase",
+                                            textDecoration: "none",
                                             boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
                                             transition: "all 0.3s ease"
                                         }}
                                     >
                                         {arena.btnText}
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
 
@@ -499,19 +503,23 @@ function CarouselLayout() {
                     gap: "16px", width: "100%", maxWidth: "360px"
                 }}>
                     <ArenaCard side="left" {...currentArena.card} width="100%" />
-                    <button
-                        onClick={() => handleEnterLand(currentArena.id)}
+                    <a
+                        href={getLandContestUrl(round, phase, currentArena.id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         style={{
+                            display: "inline-block",
                             background: "rgba(0,0,0,0.85)", border: `1px solid ${accent}`,
                             borderRadius: "30px", padding: "12px 28px", color: "#fff",
                             fontFamily: "'Clash Display', sans-serif", fontSize: "12px", fontWeight: "bold",
                             letterSpacing: "2px", cursor: "pointer", textTransform: "uppercase",
+                            textDecoration: "none",
                             boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
                             transition: "all 0.3s ease"
                         }}
                     >
                         {currentArena.btnText}
-                    </button>
+                    </a>
                 </div>
 
                 {/* Indicator Pills */}
@@ -944,7 +952,7 @@ export default function Scene() {
                         </p>
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
                             <button
-                                onClick={() => navigate(`/arena${getStageQuery(accessState.activeStage)}`, { replace: true })}
+                                onClick={() => navigate(`/login${getStageQuery(accessState.activeStage)}`, { replace: true })}
                                 style={{
                                     width: "100%",
                                     background: "#FFC451",
@@ -959,7 +967,7 @@ export default function Scene() {
                                     transition: "all 0.2s ease"
                                 }}
                             >
-                                GO TO ACTIVE STAGE →
+                                LOGIN TO ACTIVE STAGE →
                             </button>
 
                             <a
