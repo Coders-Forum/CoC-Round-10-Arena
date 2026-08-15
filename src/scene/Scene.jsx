@@ -767,12 +767,17 @@ export default function Scene() {
                     }
                 }
             } catch {
-                // If offline or unreachable, default to fail-safe
+                // Backend is unreachable — only allow round1 (the default stage)
+                // Deny access if the user navigated to any other round/phase
                 if (isMounted) {
+                    const { round: r, phase: p } = validateContestParams(location.search)
+                    const isDefaultStage = r === "1" && !p
                     setAccessState({
                         checking: false,
-                        allowed: true, // fallback to allow local testing if backend offline
-                        message: "",
+                        allowed: isDefaultStage,
+                        message: isDefaultStage
+                            ? ""
+                            : "Cannot verify contest stage (server unreachable). Please contact an organizer.",
                         activeStage: "round1"
                     })
                 }
