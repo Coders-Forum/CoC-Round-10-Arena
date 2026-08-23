@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import Login from "./components/Login";
 import Scene from "./scene/Scene";
 import Admin from "./components/Admin";
+import LeaderboardHub from "./leaderboard/LeaderboardHub";
 import {
   isLoggedIn,
   isSessionExpired,
@@ -281,6 +282,11 @@ function AppInner() {
 
         {/* Admin Stage Control Panel */}
         <Route path="/admin" element={<Admin />} />
+
+        {/* Public Leaderboard & Results Routes */}
+        <Route path="/result" element={<LeaderboardHub />} />
+        <Route path="/results" element={<LeaderboardHub />} />
+        <Route path="/leaderboard" element={<LeaderboardHub />} />
 
         {/* Catch-all — redirect to /login with preserved query */}
         <Route path="*" element={<Navigate to={`/login${validatedQuery}`} replace />} />
