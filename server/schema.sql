@@ -34,12 +34,16 @@ TO service_role
 USING (true) 
 WITH CHECK (true);
 
--- 5. Create contest_state table for admin-controlled stages
+-- 5. Create contest_state table for admin-controlled stages & disabled lands
 CREATE TABLE IF NOT EXISTS public.contest_state (
     id TEXT PRIMARY KEY DEFAULT 'current',
     active_stage TEXT NOT NULL DEFAULT 'round1' CHECK (active_stage IN ('round0', 'round1', 'round2_phase1', 'round2_phase2', 'round2_phase3')),
+    disabled_lands JSONB DEFAULT '[]'::jsonb,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration helper if table already exists
+ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS disabled_lands JSONB DEFAULT '[]'::jsonb;
 
 -- 6. Enable Row Level Security (RLS) on contest_state
 ALTER TABLE public.contest_state ENABLE ROW LEVEL SECURITY;

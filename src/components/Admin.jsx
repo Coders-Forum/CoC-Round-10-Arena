@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getLandingPageUrl } from "../config/contestConfig";
+import { getLandingPageUrl, CONTEST_CONFIG } from "../config/contestConfig";
 
 export default function Admin() {
   const [adminToken, setAdminToken] = useState(() => {
@@ -7,7 +7,10 @@ export default function Admin() {
   });
   const [activeStage, setActiveStage] = useState("round1");
   const [selectedStage, setSelectedStage] = useState("round1");
+  const [disabledLands, setDisabledLands] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [savingLands, setSavingLands] = useState(false);
+  const [landFilter, setLandFilter] = useState("");
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [statusMsg, setStatusMsg] = useState("");
   const [statusType, setStatusType] = useState(""); // "success" | "error" | "info"
@@ -16,14 +19,21 @@ export default function Admin() {
     ? import.meta.env.VITE_API_URL
     : (import.meta.env.DEV ? "http://localhost:5000" : "");
 
-  // Fetch current active contest stage
+  const round1Lands = CONTEST_CONFIG?.round1?.lands || [];
+
+  // Fetch current active contest stage & disabled lands
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/contest/status`, { cache: "no-store" });
       const data = await res.json();
-      if (data.success && data.activeStage) {
-        setActiveStage(data.activeStage);
-        setSelectedStage(data.activeStage);
+      if (data.success) {
+        if (data.activeStage) {
+          setActiveStage(data.activeStage);
+          setSelectedStage(data.activeStage);
+        }
+        if (Array.isArray(data.disabledLands)) {
+          setDisabledLands(data.disabledLands);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch contest status:", err);
@@ -65,6 +75,7 @@ export default function Admin() {
           setActiveStage(data.activeStage);
           setSelectedStage(data.activeStage);
         }
+        fetchStatus();
         setStatusMsg("Admin authenticated successfully.");
         setStatusType("success");
       } else {
@@ -124,6 +135,68 @@ export default function Admin() {
       setStatusType("error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Toggle single land disabled state
+  const handleToggleLand = (landKey) => {
+    setDisabledLands((prev) => {
+      const isAlreadyDisabled = prev.includes(landKey);
+      if (isAlreadyDisabled) {
+        return prev.filter((k) => k !== landKey);
+      } else {
+        return [...prev, landKey];
+      }
+    });
+  };
+
+  // Batch toggle all lands
+  const handleSelectAllLands = () => {
+    setDisabledLands(round1Lands.map((l) => l.landKey));
+  };
+
+  const handleClearAllLands = () => {
+    setDisabledLands([]);
+  };
+
+  // Save disabled lands to backend
+  const handleSaveDisabledLands = async () => {
+    setSavingLands(true);
+    setStatusMsg("");
+
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/contest/disabled-lands`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ disabledLands }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setDisabledLands(data.disabledLands || disabledLands);
+        setStatusMsg(`✅ Conquered lands saved! (${disabledLands.length} of 25 lands disabled)`);
+        setStatusType("success");
+      } else {
+        if (res.status === 401) {
+          sessionStorage.removeItem("coc_admin_token");
+          setAdminToken("");
+          setStatusMsg("Session expired. Please log in again.");
+          setStatusType("error");
+        } else {
+          setStatusMsg(data.message || "Failed to save disabled lands.");
+          setStatusType("error");
+        }
+      }
+    } catch {
+      setStatusMsg("Network error. Could not save disabled lands.");
+      setStatusType("error");
+    } finally {
+      setSavingLands(false);
     }
   };
 
@@ -443,8 +516,8 @@ export default function Admin() {
               })}
             </div>
 
-            {/* Action Buttons */}
-            <div style={{ display: "flex", gap: "12px" }}>
+            {/* Stage Action Buttons */}
+            <div style={{ display: "flex", gap: "12px", marginBottom: "32px" }}>
               <button
                 onClick={handleUpdateStage}
                 disabled={loading || selectedStage === activeStage}
@@ -464,7 +537,187 @@ export default function Admin() {
               >
                 {loading ? "UPDATING STAGE..." : "UPDATE STAGE ⚡"}
               </button>
+            </div>
 
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* ROUND 1: PHASE 1 & 2 CONQUERED / DISABLED LANDS MANAGER   */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div style={{
+              borderTop: "1px solid rgba(255, 196, 81, 0.25)",
+              paddingTop: "24px",
+              marginBottom: "24px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
+                <h3 style={{ fontSize: "14px", color: "#FFC451", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "800", margin: 0 }}>
+                  ⚔️ Round 1 Conquered Lands
+                </h3>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "100px", background: "rgba(34, 197, 94, 0.15)", border: "1px solid #22c55e", color: "#4ade80", fontWeight: "700" }}>
+                    🟢 Active: {round1Lands.length - disabledLands.length}
+                  </span>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "100px", background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", color: "#f87171", fontWeight: "700" }}>
+                    🔴 Conquered: {disabledLands.length}
+                  </span>
+                </div>
+              </div>
+
+              <p style={{ color: "#9CA3AF", fontSize: "12px", marginBottom: "16px", lineHeight: "1.5" }}>
+                Select lands conquered during Phase 1. When disabled, teams clicking the land in Arena will receive an alert stating <em>"This land has already been conquered"</em>.
+              </p>
+
+              {/* Quick Actions & Filter */}
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
+                <input
+                  type="text"
+                  placeholder="Filter lands..."
+                  value={landFilter}
+                  onChange={(e) => setLandFilter(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: "140px",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    background: "rgba(0,0,0,0.5)",
+                    border: "1px solid rgba(255,196,81,0.25)",
+                    color: "#fff",
+                    fontSize: "12px",
+                    outline: "none"
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSelectAllLands}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    background: "rgba(239, 68, 68, 0.15)",
+                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                    color: "#fca5a5",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    cursor: "pointer"
+                  }}
+                >
+                  Conquer All
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearAllLands}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    background: "rgba(34, 197, 94, 0.15)",
+                    border: "1px solid rgba(34, 197, 94, 0.4)",
+                    color: "#86efac",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    cursor: "pointer"
+                  }}
+                >
+                  Enable All
+                </button>
+              </div>
+
+              {/* Lands Grid List */}
+              <div style={{
+                maxHeight: "260px",
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                paddingRight: "4px",
+                marginBottom: "16px"
+              }}>
+                {round1Lands
+                  .filter((l) =>
+                    !landFilter ||
+                    l.landName.toLowerCase().includes(landFilter.toLowerCase()) ||
+                    l.landKey.toLowerCase().includes(landFilter.toLowerCase()) ||
+                    String(l.landId).includes(landFilter)
+                  )
+                  .map((land) => {
+                    const isConquered = disabledLands.includes(land.landKey);
+
+                    return (
+                      <div
+                        key={land.landKey}
+                        onClick={() => handleToggleLand(land.landKey)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          background: isConquered ? "rgba(239, 68, 68, 0.12)" : "rgba(0, 0, 0, 0.4)",
+                          border: `1px solid ${isConquered ? "rgba(239, 68, 68, 0.5)" : "rgba(255, 255, 255, 0.08)"}`,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <input
+                            type="checkbox"
+                            checked={isConquered}
+                            onChange={() => {}} // Handled by container onClick
+                            style={{ accentColor: "#ef4444", transform: "scale(1.2)", cursor: "pointer" }}
+                          />
+                          <div>
+                            <span style={{ fontSize: "12px", fontWeight: "800", color: "#FFC451", marginRight: "6px" }}>
+                              #{String(land.landId).padStart(2, "0")}
+                            </span>
+                            <span style={{ fontSize: "13px", fontWeight: "600", color: isConquered ? "#fca5a5" : "#fff" }}>
+                              {land.landName}
+                            </span>
+                            <span style={{ fontSize: "11px", color: "#6B7280", marginLeft: "6px" }}>
+                              ({land.landKey})
+                            </span>
+                          </div>
+                        </div>
+
+                        <span style={{
+                          fontSize: "10px",
+                          fontWeight: "800",
+                          letterSpacing: "0.5px",
+                          padding: "3px 8px",
+                          borderRadius: "100px",
+                          background: isConquered ? "#ef4444" : "rgba(34, 197, 94, 0.2)",
+                          color: isConquered ? "#fff" : "#4ade80",
+                          border: isConquered ? "none" : "1px solid #22c55e"
+                        }}>
+                          {isConquered ? "🔒 CONQUERED" : "AVAILABLE"}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Save Disabled Lands Button */}
+              <button
+                type="button"
+                onClick={handleSaveDisabledLands}
+                disabled={savingLands}
+                style={{
+                  width: "100%",
+                  background: "linear-gradient(90deg, #FFC451 0%, #FFD700 100%)",
+                  color: "#000",
+                  fontWeight: "800",
+                  fontSize: "13px",
+                  letterSpacing: "1px",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: "none",
+                  cursor: savingLands ? "not-allowed" : "pointer",
+                  boxShadow: "0 0 16px rgba(255,196,81,0.3)",
+                  transition: "all 0.2s ease",
+                  marginBottom: "16px"
+                }}
+              >
+                {savingLands ? "SAVING CONQUERED LANDS..." : `SAVE CONQUERED LANDS (${disabledLands.length} DISABLED) 🛡️`}
+              </button>
+            </div>
+
+            {/* Logout Button */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
                 onClick={handleLogout}
                 style={{
@@ -473,7 +726,7 @@ export default function Admin() {
                   color: "#FCA5A5",
                   fontWeight: "700",
                   fontSize: "13px",
-                  padding: "14px 20px",
+                  padding: "10px 20px",
                   borderRadius: "8px",
                   cursor: "pointer",
                   transition: "all 0.2s ease",

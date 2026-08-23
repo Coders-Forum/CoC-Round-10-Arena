@@ -227,16 +227,19 @@ const CAROUSEL_BREAKPOINT = 1024
 // ─────────────────────────────────────────────────────────────────────
 // Desktop Scroll Layout — with IntersectionObserver background switching
 // ─────────────────────────────────────────────────────────────────────
-function DesktopScrollLayout() {
+function DesktopScrollLayout({ disabledLands = [] }) {
     const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
     const sectionRefs = useRef([])
     const [activeLandIdx, setActiveLandIdx] = useState(0)
     const location = useLocation()
     const { round, phase } = validateContestParams(location.search)
 
-    const handleEnterLand = (landKey) => {
-        const url = getLandContestUrl(round, phase, landKey)
-        window.open(url, "_blank", "noopener,noreferrer")
+    const handleEnterLand = (e, landKey) => {
+        if (disabledLands.includes(landKey)) {
+            e.preventDefault()
+            alert("⚔️ This land has already been conquered!\n\nThis land was cleared during Phase 1 and is no longer available in Phase 2.")
+            return
+        }
     }
 
     useEffect(() => {
@@ -347,13 +350,16 @@ function DesktopScrollLayout() {
                                         href={getLandContestUrl(round, phase, arena.id)}
                                         target="_blank"
                                         rel="noopener noreferrer"
+                                        onClick={(e) => handleEnterLand(e, arena.id)}
                                         style={{
                                             display: "inline-block",
-                                            background: "rgba(0,0,0,0.85)",
-                                            border: `1px solid ${accent}`,
+                                            background: disabledLands.includes(arena.id)
+                                                ? "rgba(239,68,68,0.15)"
+                                                : "rgba(0,0,0,0.85)",
+                                            border: `1px solid ${disabledLands.includes(arena.id) ? "#ef4444" : accent}`,
                                             borderRadius: "30px",
                                             padding: "14px 32px",
-                                            color: "#ffffff",
+                                            color: disabledLands.includes(arena.id) ? "#fca5a5" : "#ffffff",
                                             fontFamily: "'Clash Display', sans-serif",
                                             fontSize: "13px",
                                             fontWeight: "bold",
@@ -361,11 +367,14 @@ function DesktopScrollLayout() {
                                             cursor: "pointer",
                                             textTransform: "uppercase",
                                             textDecoration: "none",
-                                            boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
-                                            transition: "all 0.3s ease"
+                                            boxShadow: disabledLands.includes(arena.id)
+                                                ? "0 0 16px rgba(239,68,68,0.3)"
+                                                : `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
+                                            transition: "all 0.3s ease",
+                                            opacity: disabledLands.includes(arena.id) ? 0.8 : 1
                                         }}
                                     >
-                                        {arena.btnText}
+                                        {disabledLands.includes(arena.id) ? "🔒 CONQUERED" : arena.btnText}
                                     </a>
                                 </div>
                             </div>
@@ -392,15 +401,18 @@ function DesktopScrollLayout() {
 // ─────────────────────────────────────────────────────────────────────
 // Carousel Layout — with dynamic background layer
 // ─────────────────────────────────────────────────────────────────────
-function CarouselLayout() {
+function CarouselLayout({ disabledLands = [] }) {
     const [activeIdx, setActiveIdx] = useState(0)
     const touchStartX = useRef(0)
     const location = useLocation()
     const { round, phase } = validateContestParams(location.search)
 
-    const handleEnterLand = (landKey) => {
-        const url = getLandContestUrl(round, phase, landKey)
-        window.open(url, "_blank", "noopener,noreferrer")
+    const handleEnterLand = (e, landKey) => {
+        if (disabledLands.includes(landKey)) {
+            e.preventDefault()
+            alert("⚔️ This land has already been conquered!\n\nThis land was cleared during Phase 1 and is no longer available in Phase 2.")
+            return
+        }
     }
 
     const cameraConfig = { position: [25, 20, 25], fov: 35, near: 0.1, far: 2000 }
@@ -509,18 +521,26 @@ function CarouselLayout() {
                         href={getLandContestUrl(round, phase, currentArena.id)}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => handleEnterLand(e, currentArena.id)}
                         style={{
                             display: "inline-block",
-                            background: "rgba(0,0,0,0.85)", border: `1px solid ${accent}`,
-                            borderRadius: "30px", padding: "12px 28px", color: "#fff",
+                            background: disabledLands.includes(currentArena.id)
+                                ? "rgba(239,68,68,0.15)"
+                                : "rgba(0,0,0,0.85)",
+                            border: `1px solid ${disabledLands.includes(currentArena.id) ? "#ef4444" : accent}`,
+                            borderRadius: "30px", padding: "12px 28px",
+                            color: disabledLands.includes(currentArena.id) ? "#fca5a5" : "#fff",
                             fontFamily: "'Clash Display', sans-serif", fontSize: "12px", fontWeight: "bold",
                             letterSpacing: "2px", cursor: "pointer", textTransform: "uppercase",
                             textDecoration: "none",
-                            boxShadow: `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
-                            transition: "all 0.3s ease"
+                            boxShadow: disabledLands.includes(currentArena.id)
+                                ? "0 0 16px rgba(239,68,68,0.3)"
+                                : `0 0 16px ${glow}66, 0 0 32px ${glow}33`,
+                            transition: "all 0.3s ease",
+                            opacity: disabledLands.includes(currentArena.id) ? 0.8 : 1
                         }}
                     >
-                        {currentArena.btnText}
+                        {disabledLands.includes(currentArena.id) ? "🔒 CONQUERED" : currentArena.btnText}
                     </a>
                 </div>
 
@@ -715,7 +735,8 @@ export default function Scene() {
         checking: true,
         allowed: true,
         message: "",
-        activeStage: "round1"
+        activeStage: "round1",
+        disabledLands: []
     })
 
     const navigate = useNavigate()
@@ -765,14 +786,16 @@ export default function Scene() {
                             checking: false,
                             allowed: true,
                             message: "",
-                            activeStage: data.activeStage || "round1"
+                            activeStage: data.activeStage || "round1",
+                            disabledLands: Array.isArray(data.disabledLands) ? data.disabledLands : []
                         })
                     } else {
                         setAccessState({
                             checking: false,
                             allowed: false,
                             message: data.message || "The requested contest stage is not currently active.",
-                            activeStage: data.activeStage || "round1"
+                            activeStage: data.activeStage || "round1",
+                            disabledLands: []
                         })
                     }
                 }
@@ -998,7 +1021,7 @@ export default function Scene() {
             ) : round === "0" ? (
                 <Round0GFGView />
             ) : (
-                isSmallScreen ? <CarouselLayout /> : <DesktopScrollLayout />
+                isSmallScreen ? <CarouselLayout disabledLands={accessState.disabledLands} /> : <DesktopScrollLayout disabledLands={accessState.disabledLands} />
             )}
         </>
     )

@@ -398,31 +398,44 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 //  CONTEST STAGE MANAGEMENT (Admin-Controlled Single Source of Truth)
 // ═══════════════════════════════════════════════════════════════
+//  CONTEST STAGE & DISABLED LANDS MANAGEMENT (Admin Controlled)
+// ═══════════════════════════════════════════════════════════════
 const ALLOWED_STAGES = ["round0", "round1", "round2_phase1", "round2_phase2", "round2_phase3"];
 let memoryActiveStage = "round1";
+let memoryDisabledLands = [];
 
 const ADMIN_SESSIONS = new Map();
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || "admin").toLowerCase();
 const ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD || "Admin@COC2026");
 const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
 
-async function getActiveContestStage() {
+async function getContestState() {
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from("contest_state")
-        .select("active_stage")
+        .select("active_stage, disabled_lands")
         .eq("id", "current")
         .maybeSingle();
 
-      if (!error && data?.active_stage && ALLOWED_STAGES.includes(data.active_stage)) {
-        memoryActiveStage = data.active_stage;
+      if (!error && data) {
+        if (data.active_stage && ALLOWED_STAGES.includes(data.active_stage)) {
+          memoryActiveStage = data.active_stage;
+        }
+        if (Array.isArray(data.disabled_lands)) {
+          memoryDisabledLands = data.disabled_lands;
+        }
       }
     } catch (err) {
-      console.error("[Supabase Stage Query Error]:", err.message);
+      console.error("[Supabase State Query Error]:", err.message);
     }
   }
-  return memoryActiveStage;
+  return { activeStage: memoryActiveStage, disabledLands: memoryDisabledLands };
+}
+
+async function getActiveContestStage() {
+  const state = await getContestState();
+  return state.activeStage;
 }
 
 async function setActiveContestStage(newStage) {
@@ -437,6 +450,7 @@ async function setActiveContestStage(newStage) {
         {
           id: "current",
           active_stage: newStage,
+          disabled_lands: memoryDisabledLands,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }
@@ -450,6 +464,35 @@ async function setActiveContestStage(newStage) {
 
   memoryActiveStage = newStage;
   return memoryActiveStage;
+}
+
+async function setDisabledLands(lands) {
+  if (!Array.isArray(lands)) {
+    throw new Error("disabledLands must be an array");
+  }
+
+  const sanitized = lands.map((item) => String(item).toLowerCase().trim()).filter(Boolean);
+
+  if (supabase) {
+    const { error } = await supabase
+      .from("contest_state")
+      .upsert(
+        {
+          id: "current",
+          active_stage: memoryActiveStage,
+          disabled_lands: sanitized,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+    if (error) {
+      console.error("[Supabase Disabled Lands Save Error]:", error.message);
+    }
+  }
+
+  memoryDisabledLands = sanitized;
+  return memoryDisabledLands;
 }
 
 function requireAdmin(req, res, next) {
@@ -474,12 +517,13 @@ function requireAdmin(req, res, next) {
 // ═══════════════════════════════════════════════════════════════
 //  PUBLIC CONTEST STATUS API
 // ═══════════════════════════════════════════════════════════════
-app.get(["/contest/status", "/api/contest/status", "/api/contest-status"], async (_req, res) => {
+app.get(["/contest/status", "/api/contest/status", "/api/contest-status", "/api/contest/disabled-lands"], async (_req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-  const stage = await getActiveContestStage();
+  const state = await getContestState();
   return res.json({
     success: true,
-    activeStage: stage,
+    activeStage: state.activeStage,
+    disabledLands: state.disabledLands,
     timestamp: new Date().toISOString(),
   });
 });
@@ -584,6 +628,32 @@ app.all(["/admin/contest/stage", "/api/admin/contest/stage", "/api/admin/stage"]
   }
 });
 
+// Update disabled/conquered lands (PATCH & POST)
+app.all(["/admin/contest/disabled-lands", "/api/admin/contest/disabled-lands", "/api/admin/disabled-lands"], requireAdmin, async (req, res) => {
+  if (req.method !== "PATCH" && req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
+  }
+
+  const { disabledLands } = req.body;
+  if (!Array.isArray(disabledLands)) {
+    return res.status(400).json({ success: false, message: "disabledLands array is required." });
+  }
+
+  try {
+    const updated = await setDisabledLands(disabledLands);
+    console.log(`[${new Date().toISOString()}] 🛡️ ADMIN UPDATED DISABLED LANDS: [${updated.join(", ")}] (by ${req.adminUser})`);
+    return res.json({
+      success: true,
+      disabledLands: updated,
+      message: `Disabled lands updated (${updated.length} lands conquered/disabled).`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update disabled lands:", err.message);
+    return res.status(500).json({ success: false, message: "Failed to update disabled lands." });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════
 //  CONTEST ACCESS & ELIGIBILITY VERIFICATION API
 // ═══════════════════════════════════════════════════════════════
@@ -664,6 +734,7 @@ app.all(["/contest/verify-access", "/api/contest/verify-access", "/api/contest/a
     allowed: true,
     activeStage,
     requestedStage,
+    disabledLands: memoryDisabledLands,
     teamName: user.teamName,
   });
 });
