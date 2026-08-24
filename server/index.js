@@ -176,35 +176,10 @@ function isValidUsername(u) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  IN-MEMORY FALLBACK DATA STORE (Dev Only)
+//  IN-MEMORY STORE & SESSION MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 
 const USERS = new Map();
-
-// Only populate in-memory fallback in non-production environments
-if (process.env.NODE_ENV !== "production") {
-  USERS.set("testteam", {
-    username: "testteam",
-    passwordHash: hashPassword("Battle@2025"),
-    teamName: "Test Team Alpha",
-    members: [
-      { name: "Arjun Sharma", hackerrankId: "arjun_codes", role: "Captain" },
-      { name: "Priya Menon", hackerrankId: "priya_m", role: "Member" },
-      { name: "Karthik R", hackerrankId: "karthik_r99", role: "Member" },
-      { name: "Sneha Das", hackerrankId: "sneha_d", role: "Member" },
-    ],
-    conqueredLand: { id: 1, name: "Land #1 — Volcano Peak", status: "held" },
-    attackAssignments: [
-      { member: "Priya Menon", land: "Land #2 — Frozen Wastes", status: "in_progress" },
-      { member: "Karthik R", land: "Land #3 — Jungle Canopy", status: "pending" },
-    ],
-    score: 340,
-    rank: 1,
-    totalLands: 1,
-    status: "active",
-  });
-}
-
 const SESSIONS = new Map();
 const SESSION_TTL = 4 * 60 * 60 * 1000;
 
@@ -405,8 +380,10 @@ let memoryActiveStage = "round1";
 let memoryDisabledLands = [];
 
 const ADMIN_SESSIONS = new Map();
-const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || "admin").toLowerCase();
-const ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || "Admin@COC2026");
+const rawAdminUser = process.env.ADMIN_USERNAME || "";
+const rawAdminPass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || "";
+const ADMIN_USERNAME = rawAdminUser ? rawAdminUser.toLowerCase() : "";
+const ADMIN_PASSWORD_HASH = rawAdminPass ? hashPassword(rawAdminPass) : "";
 const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
 
 async function getContestState() {
@@ -546,6 +523,11 @@ app.post(["/admin/login", "/api/admin/login"], adminLoginLimiter, async (req, re
 
   if (!rawUsername || !rawPassword) {
     return res.status(400).json({ success: false, message: "Username and password are required." });
+  }
+
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD_HASH) {
+    console.error(`[${new Date().toISOString()}] Admin login attempted but ADMIN_USERNAME or ADMIN_PASSWORD is not configured.`);
+    return res.status(503).json({ success: false, message: "Admin portal is not configured on this server." });
   }
 
   const username = rawUsername.toLowerCase();
@@ -785,11 +767,10 @@ if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
     }
     console.log(`
 ╔══════════════════════════════════════╗
-║   🔒 COC Backend — Secured Server   ║
+║   🔒 COC Backend — Production Ready ║
 ║   http://localhost:${PORT}              ║
 ╠══════════════════════════════════════╣
 ║  DATABASE: ${supabase ? "SUPABASE CLOUD DB ⚡" : "IN-MEMORY STORE 💾"}
-${isDev ? `║  TEST ACCOUNT: testteam (dev only)    ` : ""}
 ╠══════════════════════════════════════╣
 ║  GET  /api/contest/status  — active  ║
 ║  POST /api/admin/login     — admin   ║

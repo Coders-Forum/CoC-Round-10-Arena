@@ -4,9 +4,17 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const pepper = process.env.PEPPER ?? "coc_secret_pepper_2025";
-const password = process.argv[2] || "Battle@2025";
-const username = process.argv[3] || "team1";
-const teamName = (process.argv[4] || "Team Alpha").replace(/'/g, "''");
+const password = process.argv[2];
+const username = process.argv[3];
+const teamName = (process.argv[4] || "").replace(/'/g, "''");
+
+if (!password || !username) {
+  console.log(`
+Usage: node server/hashPassword.js <password> <username> "<teamName>"
+Example: node server/hashPassword.js "2024PECCS645" "phoneix" "Phoneix"
+  `);
+  process.exit(1);
+}
 
 const hash = crypto
   .createHash("sha256")

@@ -353,7 +353,7 @@ export default function Admin() {
               </label>
               <input
                 type="text"
-                placeholder="admin"
+                placeholder="Enter admin username"
                 value={loginForm.username}
                 onChange={(e) => setLoginForm((p) => ({ ...p, username: e.target.value }))}
                 style={{
