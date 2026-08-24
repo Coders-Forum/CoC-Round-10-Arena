@@ -2,8 +2,8 @@ import { characterOrder } from "./characterOrder.js"
 
 const FONT = "'Clash', 'Clash Display', sans-serif"
 
-// Responsive grid: Rank | Avatar | Team+Leader | Roll No | Dept | Year | Sec | Score
-const GRID_COLS = "48px 44px 1fr 110px 90px 90px 52px 90px"
+// Grid: Avatar | Team+Leader | Roll No | Dept | Year | Section
+const GRID_COLS = "44px 1fr 120px 90px 100px 60px"
 
 export default function RankedLeaderboard({ title, subtitle, entries, showDivider = true }) {
     return (
@@ -47,14 +47,12 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
                         marginBottom: "10px"
                     }}>
                         {[
-                            { label: "Rank",    align: "left"  },
-                            { label: "",        align: "left"  }, // avatar
-                            { label: "Team / Leader", align: "left"  },
-                            { label: "Roll No", align: "left"  },
-                            { label: "Dept",    align: "left"  },
-                            { label: "Year",    align: "left"  },
-                            { label: "Sec",     align: "left"  },
-                            { label: "Score",   align: "right" },
+                            { label: "",             align: "left"  }, // avatar
+                            { label: "Team / Leader", align: "left" },
+                            { label: "Roll No",      align: "left"  },
+                            { label: "Dept",         align: "left"  },
+                            { label: "Year",         align: "left"  },
+                            { label: "Section",      align: "left"  },
                         ].map((col, ci) => (
                             <div
                                 key={ci}
@@ -76,14 +74,7 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
                     {/* Leaderboard Rows */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         {entries.map((entry, i) => {
-                            const rank = i + 1
                             const character = characterOrder[i]
-                            const isTop3 = rank <= 3
-                            const rankColor =
-                                rank === 1 ? "#FFD700" :
-                                rank === 2 ? "#E2E8F0" :
-                                rank === 3 ? "#CD7F32" :
-                                "#9CA3AF"
 
                             return (
                                 <div key={i}>
@@ -94,27 +85,12 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
                                         gap: "10px",
                                         padding: "12px 18px",
                                         borderRadius: "12px",
-                                        background: isTop3 ? "rgba(255, 196, 81, 0.08)" : "rgba(17, 24, 39, 0.75)",
-                                        border: `1px solid ${isTop3 ? "rgba(255, 196, 81, 0.35)" : "rgba(255, 196, 81, 0.12)"}`,
+                                        background: "rgba(17, 24, 39, 0.75)",
+                                        border: "1px solid rgba(255, 196, 81, 0.12)",
                                         backdropFilter: "blur(8px)",
                                         WebkitBackdropFilter: "blur(8px)",
-                                        boxShadow: isTop3 ? "0 4px 20px rgba(255, 196, 81, 0.1)" : "none",
                                         transition: "all 0.2s ease"
                                     }}>
-                                        {/* Rank */}
-                                        <div style={{
-                                            color: rankColor,
-                                            fontFamily: FONT,
-                                            fontSize: "13px",
-                                            fontWeight: "800",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "3px",
-                                            whiteSpace: "nowrap"
-                                        }}>
-                                            {rank === 1 ? "🥇 1" : rank === 2 ? "🥈 2" : rank === 3 ? "🥉 3" : `#${rank}`}
-                                        </div>
-
                                         {/* Avatar */}
                                         {character ? (
                                             <img
@@ -126,7 +102,7 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
                                                     height: "36px",
                                                     borderRadius: "50%",
                                                     objectFit: "cover",
-                                                    border: `1px solid ${isTop3 ? "#FFC451" : "rgba(255, 196, 81, 0.3)"}`
+                                                    border: "1px solid rgba(255, 196, 81, 0.3)"
                                                 }}
                                             />
                                         ) : <div style={{ width: "36px" }} />}
@@ -197,42 +173,7 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
                                         }}>
                                             {entry.section || "—"}
                                         </div>
-
-                                        {/* Score */}
-                                        <div style={{
-                                            color: "#FFC451",
-                                            fontFamily: FONT,
-                                            fontSize: "14px",
-                                            fontWeight: "800",
-                                            textAlign: "right",
-                                            textShadow: "0 0 10px rgba(255, 196, 81, 0.3)"
-                                        }}>
-                                            {entry.score.toLocaleString()}
-                                        </div>
                                     </div>
-
-                                    {showDivider && rank === 5 && entries.length > 5 && (
-                                        <div style={{
-                                            borderBottom: "1px dashed rgba(255, 196, 81, 0.35)",
-                                            margin: "12px 0",
-                                            display: "flex",
-                                            justifyContent: "center"
-                                        }}>
-                                            <span style={{
-                                                background: "#0B0F1A",
-                                                color: "#FFC451",
-                                                fontSize: "10px",
-                                                fontWeight: "800",
-                                                letterSpacing: "2px",
-                                                padding: "2px 10px",
-                                                borderRadius: "20px",
-                                                border: "1px solid rgba(255,196,81,0.2)",
-                                                transform: "translateY(50%)"
-                                            }}>
-                                                TOP QUALIFIERS
-                                            </span>
-                                        </div>
-                                    )}
                                 </div>
                             )
                         })}
