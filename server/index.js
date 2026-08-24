@@ -406,7 +406,7 @@ let memoryDisabledLands = [];
 
 const ADMIN_SESSIONS = new Map();
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || "admin").toLowerCase();
-const ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD || "Admin@COC2026");
+const ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || "Admin@COC2026");
 const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
 
 async function getContestState() {
