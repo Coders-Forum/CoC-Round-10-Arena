@@ -7,6 +7,9 @@ import { isLoggedIn } from "../utils/sessionSecurity.js"
 
 const FONT = "'Clash', 'Clash Display', sans-serif"
 
+// Set to true to temporarily suspend results until Round 2
+const RESULTS_SUSPENDED = true
+
 const TABS = [
     { key: "round0", label: "Round 0 (Top 40)", data: round0Data, subtitle: "Round 0 — Codefront" },
     { key: "round1", label: "Round 1 (Top 25)", data: round1Data, subtitle: "Round 1 — Code Warfare" },
@@ -190,78 +193,205 @@ export default function LeaderboardHub() {
                 flexDirection: "column",
                 alignItems: "center"
             }}>
-                {/* Title Badge */}
-                <div style={{
-                    display: "inline-block",
-                    padding: "4px 14px",
-                    borderRadius: "100px",
-                    background: "rgba(255, 196, 81, 0.12)",
-                    border: "1px solid rgba(255, 196, 81, 0.3)",
-                    color: "#FFC451",
-                    fontSize: "11px",
-                    fontWeight: "800",
-                    letterSpacing: "0.2em",
-                    textTransform: "uppercase",
-                    marginBottom: "12px"
-                }}>
-                    CLASH OF CODERS 2026
-                </div>
+                {RESULTS_SUSPENDED ? (
+                    <div style={{
+                        marginTop: "40px",
+                        width: "100%",
+                        maxWidth: "520px",
+                        padding: isSmallScreen ? "32px 20px" : "44px 36px",
+                        borderRadius: "20px",
+                        background: "rgba(17, 24, 39, 0.85)",
+                        border: "1px solid rgba(255, 196, 81, 0.35)",
+                        backdropFilter: "blur(14px)",
+                        WebkitBackdropFilter: "blur(14px)",
+                        boxShadow: "0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(255,196,81,0.15)",
+                        textAlign: "center",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center"
+                    }}>
+                        <div style={{
+                            width: "64px",
+                            height: "64px",
+                            borderRadius: "50%",
+                            background: "rgba(255, 196, 81, 0.12)",
+                            border: "1px solid rgba(255, 196, 81, 0.3)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "28px",
+                            marginBottom: "18px",
+                            boxShadow: "0 0 20px rgba(255,196,81,0.2)"
+                        }}>
+                            🔒
+                        </div>
 
-                <h1 style={{
-                    color: "#FFFFFF",
-                    fontSize: isSmallScreen ? "24px" : "32px",
-                    fontWeight: "800",
-                    letterSpacing: "1px",
-                    marginBottom: "8px",
-                    textAlign: "center",
-                    textShadow: "0 0 25px rgba(255,196,81,0.3)"
-                }}>
-                    🏆 CONTEST LEADERBOARD
-                </h1>
+                        <div style={{
+                            display: "inline-block",
+                            padding: "4px 14px",
+                            borderRadius: "100px",
+                            background: "rgba(255, 196, 81, 0.12)",
+                            border: "1px solid rgba(255, 196, 81, 0.3)",
+                            color: "#FFC451",
+                            fontSize: "11px",
+                            fontWeight: "800",
+                            letterSpacing: "0.2em",
+                            textTransform: "uppercase",
+                            marginBottom: "12px"
+                        }}>
+                            ROUND 1 IN PROGRESS
+                        </div>
 
-                <p style={{
-                    color: "#9CA3AF",
-                    fontSize: "13px",
-                    letterSpacing: "0.5px",
-                    marginBottom: "32px",
-                    textAlign: "center",
-                    maxWidth: "480px",
-                    lineHeight: "1.6"
-                }}>
-                    Official live rankings and scores across all preliminary rounds and offline arena conquest phases.
-                </p>
+                        <h2 style={{
+                            color: "#FFFFFF",
+                            fontSize: isSmallScreen ? "22px" : "26px",
+                            fontWeight: "800",
+                            letterSpacing: "1px",
+                            marginBottom: "12px",
+                            textShadow: "0 0 25px rgba(255,196,81,0.35)"
+                        }}>
+                            RESULTS UNDER EMBARGO
+                        </h2>
 
-                {/* Tab Controls */}
-                <div style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                    justifyContent: "center",
-                    marginBottom: "36px",
-                    padding: "6px",
-                    borderRadius: "50px",
-                    background: "rgba(17, 24, 39, 0.6)",
-                    border: "1px solid rgba(255, 196, 81, 0.15)",
-                    backdropFilter: "blur(10px)"
-                }}>
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            style={btnStyle(tab.key === activeTab)}
-                        >
-                            {tab.icon && <span>{tab.icon}</span>}
-                            <span>{tab.label}</span>
-                        </button>
-                    ))}
-                </div>
+                        <p style={{
+                            color: "#9CA3AF",
+                            fontSize: "14px",
+                            lineHeight: "1.6",
+                            marginBottom: "28px",
+                            maxWidth: "420px"
+                        }}>
+                            The official leaderboard and qualifier standings are temporarily suspended and will be declared live starting from <strong>Round 2</strong>. Focus on conquering your lands!
+                        </p>
 
-                {/* Table Component */}
-                <RankedLeaderboard
-                    title={current.label}
-                    subtitle={current.subtitle}
-                    entries={current.data}
-                />
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "320px" }}>
+                            <a
+                                href={getLandingPageUrl()}
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "6px",
+                                    background: "#FFC451",
+                                    color: "#000",
+                                    fontFamily: FONT,
+                                    fontSize: "13px",
+                                    fontWeight: "800",
+                                    letterSpacing: "1px",
+                                    textTransform: "uppercase",
+                                    textDecoration: "none",
+                                    padding: "14px 24px",
+                                    borderRadius: "30px",
+                                    boxShadow: "0 0 20px rgba(255,196,81,0.35)",
+                                    transition: "all 0.2s ease"
+                                }}
+                            >
+                                <span>←</span>
+                                <span>LANDING PAGE</span>
+                            </a>
+
+                            <button
+                                onClick={() => navigate("/login")}
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "6px",
+                                    background: "rgba(255, 196, 81, 0.1)",
+                                    border: "1px solid rgba(255, 196, 81, 0.3)",
+                                    color: "#FFC451",
+                                    fontFamily: FONT,
+                                    fontSize: "12px",
+                                    fontWeight: "700",
+                                    letterSpacing: "1px",
+                                    textTransform: "uppercase",
+                                    padding: "12px 20px",
+                                    borderRadius: "30px",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s ease"
+                                }}
+                            >
+                                <span>⚔️</span>
+                                <span>ENTER CONTEST ARENA</span>
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* Title Badge */}
+                        <div style={{
+                            display: "inline-block",
+                            padding: "4px 14px",
+                            borderRadius: "100px",
+                            background: "rgba(255, 196, 81, 0.12)",
+                            border: "1px solid rgba(255, 196, 81, 0.3)",
+                            color: "#FFC451",
+                            fontSize: "11px",
+                            fontWeight: "800",
+                            letterSpacing: "0.2em",
+                            textTransform: "uppercase",
+                            marginBottom: "12px"
+                        }}>
+                            CLASH OF CODERS 2026
+                        </div>
+
+                        <h1 style={{
+                            color: "#FFFFFF",
+                            fontSize: isSmallScreen ? "24px" : "32px",
+                            fontWeight: "800",
+                            letterSpacing: "1px",
+                            marginBottom: "8px",
+                            textAlign: "center",
+                            textShadow: "0 0 25px rgba(255,196,81,0.3)"
+                        }}>
+                            🏆 CONTEST LEADERBOARD
+                        </h1>
+
+                        <p style={{
+                            color: "#9CA3AF",
+                            fontSize: "13px",
+                            letterSpacing: "0.5px",
+                            marginBottom: "32px",
+                            textAlign: "center",
+                            maxWidth: "480px",
+                            lineHeight: "1.6"
+                        }}>
+                            Official live rankings and scores across all preliminary rounds and offline arena conquest phases.
+                        </p>
+
+                        {/* Tab Controls */}
+                        <div style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "8px",
+                            justifyContent: "center",
+                            marginBottom: "36px",
+                            padding: "6px",
+                            borderRadius: "50px",
+                            background: "rgba(17, 24, 39, 0.6)",
+                            border: "1px solid rgba(255, 196, 81, 0.15)",
+                            backdropFilter: "blur(10px)"
+                        }}>
+                            {TABS.map((tab) => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setActiveTab(tab.key)}
+                                    style={btnStyle(tab.key === activeTab)}
+                                >
+                                    {tab.icon && <span>{tab.icon}</span>}
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Active Tab Leaderboard Table */}
+                        <RankedLeaderboard
+                            title={current.label}
+                            subtitle={current.subtitle}
+                            entries={current.data}
+                            showDivider={activeTab === "round0" || activeTab === "round1"}
+                        />
+                    </>
+                )}
             </main>
         </div>
     )
