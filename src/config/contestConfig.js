@@ -250,22 +250,15 @@ export function getLandContestUrl(round, phase, landKey) {
 }
 
 /**
- * Helper to retrieve the official Landing Page URL,
- * preserving any round and phase parameters.
+ * Helper to retrieve the official Landing Page URL (clean, without query params).
  *
- * @param {string|object} [searchOrParams] - Optional URL search string or params object
  * @returns {string} - The complete Landing Page URL
  */
-export function getLandingPageUrl(searchOrParams = "") {
-  const validated = validateContestParams(searchOrParams);
-  const baseUrl =
+export function getLandingPageUrl() {
+  return (
     import.meta.env.VITE_LANDING_URL ||
     (import.meta.env.DEV
       ? "http://127.0.0.1:5500/CF-Site/clash_of_coders.html"
-      : "https://codersforum.netlify.app/clash_of_coders");
-
-  const query = validated.queryString;
-  if (!query) return baseUrl;
-  const separator = baseUrl.includes("?") ? "&" : "?";
-  return `${baseUrl}${separator}${query.slice(1)}`;
+      : "https://codersforum.netlify.app/clash_of_coders")
+  );
 }

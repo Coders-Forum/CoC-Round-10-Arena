@@ -698,7 +698,7 @@ function Round0GFGView() {
 
                 <div style={{ marginTop: "24px" }}>
                     <a
-                        href={getLandingPageUrl("?round=0")}
+                        href={getLandingPageUrl()}
                         style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -876,7 +876,7 @@ export default function Scene() {
 
                 <div style={{ display: "flex", alignItems: "center", gap: isSmallScreen ? "6px" : "10px" }}>
                     <a
-                        href={getLandingPageUrl(location.search)}
+                        href={getLandingPageUrl()}
                         title="Return to Main Landing Page"
                         style={{
                             display: "flex",
@@ -996,7 +996,7 @@ export default function Scene() {
                             </button>
 
                             <a
-                                href={getLandingPageUrl(location.search)}
+                                href={getLandingPageUrl()}
                                 style={{
                                     display: "inline-flex",
                                     alignItems: "center",

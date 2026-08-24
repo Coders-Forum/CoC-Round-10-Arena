@@ -548,7 +548,7 @@ export default function Login() {
           {/* ── Back to Landing Page ── */}
           <div className="mb-4 flex items-center justify-center">
             <a
-              href={getLandingPageUrl(location.search)}
+              href={getLandingPageUrl()}
               className="inline-flex items-center gap-1.5 text-xs text-[#FFC451]/75 hover:text-[#FFC451] transition-all duration-200 py-1 px-3 rounded-full bg-[#FFC451]/8 hover:bg-[#FFC451]/20 border border-[#FFC451]/20 font-clash"
             >
               <span>←</span>
