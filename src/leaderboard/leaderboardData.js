@@ -10,117 +10,782 @@
  *   section     : string  — Section (e.g. "A", "B")
  */
 
-// ── Round 0 — Top 40 Teams ────────────────────────────────────────────
+// ── Round 0 — All 40 Registered Teams ─────────────────────────────────
 export const round0Data = [
-    { teamName: "Team Alpha",    leader: "Aditya Kumar",    rollNo: "22CS001", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Beta",     leader: "Bhavya Reddy",    rollNo: "22CS045", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Gamma",    leader: "Chetan Sharma",   rollNo: "22IT010", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Delta",    leader: "Divya Nair",      rollNo: "22EC030", dept: "ECE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Epsilon",  leader: "Eshan Mehta",     rollNo: "22CS022", dept: "CSE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Zeta",     leader: "Farhan Siddiqui", rollNo: "22ME015", dept: "MECH", year: "3rd Year", section: "B" },
-    { teamName: "Team Eta",      leader: "Gayathri Iyer",   rollNo: "22CS078", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Theta",    leader: "Harsh Agarwal",   rollNo: "22IT055", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Iota",     leader: "Ishaan Joshi",    rollNo: "22CS091", dept: "CSE",  year: "2nd Year", section: "B" },
-    { teamName: "Team Kappa",    leader: "Jyothi Priya",    rollNo: "22EC062", dept: "ECE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Lambda",   leader: "Kiran Bose",      rollNo: "22CS033", dept: "CSE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Mu",       leader: "Lakshmi Devi",    rollNo: "22IT020", dept: "IT",   year: "2nd Year", section: "B" },
-    { teamName: "Team Nu",       leader: "Manish Gupta",    rollNo: "22CS067", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Xi",       leader: "Nikhil Varma",    rollNo: "22EC041", dept: "ECE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Omicron",  leader: "Oviya Suresh",    rollNo: "22CS083", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Pi",       leader: "Pranav Menon",    rollNo: "22IT038", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Rho",      leader: "Qasim Ali",       rollNo: "22CS011", dept: "CSE",  year: "2nd Year", section: "B" },
-    { teamName: "Team Sigma",    leader: "Ragini Das",      rollNo: "22EC074", dept: "ECE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Tau",      leader: "Suresh Pillai",   rollNo: "22CS050", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Upsilon",  leader: "Tanvi Desai",     rollNo: "22IT027", dept: "IT",   year: "2nd Year", section: "C" },
-    { teamName: "Team Phi",      leader: "Udit Singh",      rollNo: "22CS096", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Chi",      leader: "Vaishnavi Rao",   rollNo: "22EC018", dept: "ECE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Psi",      leader: "Wasim Khan",      rollNo: "22CS044", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Omega",    leader: "Yamini Bhat",     rollNo: "22IT066", dept: "IT",   year: "2nd Year", section: "A" },
-    { teamName: "Team Apex",     leader: "Zoya Mirza",      rollNo: "22CS059", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Nexus",    leader: "Arun Krishnan",   rollNo: "22EC088", dept: "ECE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Vortex",   leader: "Bindu Sharma",    rollNo: "22CS072", dept: "CSE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Pulse",    leader: "Charu Saxena",    rollNo: "22IT003", dept: "IT",   year: "2nd Year", section: "B" },
-    { teamName: "Team Orbit",    leader: "Deepak Nair",     rollNo: "22CS086", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Flux",     leader: "Elango R",        rollNo: "22EC057", dept: "ECE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Storm",    leader: "Fathima Begum",   rollNo: "22CS025", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Blaze",    leader: "Ganesh Kumar",    rollNo: "22IT049", dept: "IT",   year: "2nd Year", section: "A" },
-    { teamName: "Team Nova",     leader: "Harini Pillai",   rollNo: "22CS013", dept: "CSE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Cipher",   leader: "Irfan Shaikh",    rollNo: "22EC036", dept: "ECE",  year: "2nd Year", section: "B" },
-    { teamName: "Team Zenith",   leader: "Jaya Lakshmi",    rollNo: "22CS094", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Cosmos",   leader: "Kartik Rao",      rollNo: "22IT081", dept: "IT",   year: "2nd Year", section: "C" },
-    { teamName: "Team Axis",     leader: "Lavanya M",       rollNo: "22CS028", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Radiant",  leader: "Manoj Karthik",   rollNo: "22EC069", dept: "ECE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Phantom",  leader: "Nisha Gopal",     rollNo: "22CS042", dept: "CSE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Eclipse",  leader: "Om Prakash",      rollNo: "22IT014", dept: "IT",   year: "2nd Year", section: "B" },
+    {
+        "teamName": "Phoneix",
+        "leader": "Varun S",
+        "rollNo": "2024PECCS645",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "I"
+    },
+    {
+        "teamName": "Team Weberse",
+        "leader": "Al Jaseera Banu H",
+        "rollNo": "2024PECEE106",
+        "dept": "EEE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "TriByte",
+        "leader": "Aradhana M",
+        "rollNo": "2025PECCS135",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "FluxNext",
+        "leader": "Kumaran M",
+        "rollNo": "2024PECAI435",
+        "dept": "AI & DS",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "DYNAMIC TRIO",
+        "leader": "Harshavarthini G",
+        "rollNo": "2025PECIT162",
+        "dept": "IT",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Zevik",
+        "leader": "Johovit V",
+        "rollNo": "2024PECCS969",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "N"
+    },
+    {
+        "teamName": "Ctrl Alt Defeat",
+        "leader": "Ramya  M",
+        "rollNo": "2024PECIT254",
+        "dept": "IT",
+        "year": "III Year",
+        "section": "C"
+    },
+    {
+        "teamName": "Code vizzzz..",
+        "leader": "Arunapriya S",
+        "rollNo": "2025PECCS138",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Team Runtime error",
+        "leader": "Padmajaa S",
+        "rollNo": "2024PECCS379",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "The NullPointer",
+        "leader": "TANISHKA PANDEY",
+        "rollNo": "2024PECCS523",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "G"
+    },
+    {
+        "teamName": "Archer queens",
+        "leader": "Ashwini S",
+        "rollNo": "2024PECCS136",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Team Titans",
+        "leader": "Nambi GT",
+        "rollNo": "2024PECAI472",
+        "dept": "AI & DS",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "Zsymox",
+        "leader": "Barath Kumar Basker",
+        "rollNo": "2025PECCS628",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "I"
+    },
+    {
+        "teamName": "team_S",
+        "leader": "SUBASRI S",
+        "rollNo": "2025PECCS525",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "G"
+    },
+    {
+        "teamName": "Triple Threat",
+        "leader": "Keerthana R",
+        "rollNo": "2024PECCS293",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "D"
+    },
+    {
+        "teamName": "Team Wizards",
+        "leader": "Mohammed Arshath K H",
+        "rollNo": "2024PECCS804",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "L"
+    },
+    {
+        "teamName": "THE FIRE CODERS",
+        "leader": "SAYANTANI BANERJEE",
+        "rollNo": "2024PECCS464",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "Pulse",
+        "leader": "Lavanya J",
+        "rollNo": "2025PECIT216",
+        "dept": "IT",
+        "year": "II Year",
+        "section": "B"
+    },
+    {
+        "teamName": "Code crafters",
+        "leader": "Gayathri N",
+        "rollNo": "2024PECCS214",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "B"
+    },
+    {
+        "teamName": "Omnipotent shadow",
+        "leader": "Abishek. B",
+        "rollNo": "2024PECEE167",
+        "dept": "EEE",
+        "year": "III Year",
+        "section": "B"
+    },
+    {
+        "teamName": "AlgoNauts",
+        "leader": "Sajan Kumaran M U",
+        "rollNo": "2024PECCS820",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "L"
+    },
+    {
+        "teamName": "Flycode",
+        "leader": "Jasmine banu D",
+        "rollNo": "2025PECCS261",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "C"
+    },
+    {
+        "teamName": "dracarys",
+        "leader": "LOKESH S",
+        "rollNo": "2024PECIT504",
+        "dept": "IT",
+        "year": "III Year",
+        "section": "G"
+    },
+    {
+        "teamName": "Alpha Algorithms",
+        "leader": "GOMATHI V",
+        "rollNo": "2024PECCS220",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "B"
+    },
+    {
+        "teamName": "Black box",
+        "leader": "Pretheba.E",
+        "rollNo": "2024PECCS402",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "Code³",
+        "leader": "Akshaya S M",
+        "rollNo": "2024PECCS114",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Code warriers",
+        "leader": "Harini A",
+        "rollNo": "2024PECCS228",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "C"
+    },
+    {
+        "teamName": "CODE CONQUERORS",
+        "leader": "BHARATHI POORNA K",
+        "rollNo": "2024PECCS147",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Brainiacs",
+        "leader": "Geetha Gayathri H",
+        "rollNo": "2024PECML121",
+        "dept": "AI & ML",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Digital Nemesis",
+        "leader": "M.Madhuri",
+        "rollNo": "2024PECCS353",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "Code Warriors⚡",
+        "leader": "MANISHA H",
+        "rollNo": "2025PECCS343",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "D"
+    },
+    {
+        "teamName": "Sheesdiva",
+        "leader": "SAMEEHA S",
+        "rollNo": "2024PECCS448",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "Sangavi S",
+        "leader": "Sangavi S",
+        "rollNo": "2025PECCS472",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "F"
+    },
+    {
+        "teamName": "ByteForce",
+        "leader": "P Rachel Nishika",
+        "rollNo": "2024PECCS412",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "Algoverse",
+        "leader": "Bina Y",
+        "rollNo": "2024PECCS153",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "AlgoRhythm",
+        "leader": "Prema Sahithi Aremanda",
+        "rollNo": "2024PECCS129",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Varshini S",
+        "leader": "Varshini S",
+        "rollNo": "2024PECCS697",
+        "dept": "CSBS",
+        "year": "III Year",
+        "section": "B"
+    },
+    {
+        "teamName": "SARVAJEETH THEJOANANDA",
+        "leader": "SARVAJEETH THEJOANANDA",
+        "rollNo": "2024PECCB224",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "J"
+    },
+    {
+        "teamName": "HACKPIXEL",
+        "leader": "PRAVEEN RAJ E",
+        "rollNo": "2024PECEC354",
+        "dept": "ECE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "Code Blind",
+        "leader": "Dhanalakshmi N",
+        "rollNo": "2024PECCS172",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "B"
+    }
 ];
 
 // ── Round 1 — Top 25 Teams ────────────────────────────────────────────
 export const round1Data = [
-    { teamName: "Team Alpha",    leader: "Aditya Kumar",    rollNo: "22CS001", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Gamma",    leader: "Chetan Sharma",   rollNo: "22IT010", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Delta",    leader: "Divya Nair",      rollNo: "22EC030", dept: "ECE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Beta",     leader: "Bhavya Reddy",    rollNo: "22CS045", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Epsilon",  leader: "Eshan Mehta",     rollNo: "22CS022", dept: "CSE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Theta",    leader: "Harsh Agarwal",   rollNo: "22IT055", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Eta",      leader: "Gayathri Iyer",   rollNo: "22CS078", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Lambda",   leader: "Kiran Bose",      rollNo: "22CS033", dept: "CSE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Iota",     leader: "Ishaan Joshi",    rollNo: "22CS091", dept: "CSE",  year: "2nd Year", section: "B" },
-    { teamName: "Team Kappa",    leader: "Jyothi Priya",    rollNo: "22EC062", dept: "ECE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Nu",       leader: "Manish Gupta",    rollNo: "22CS067", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Mu",       leader: "Lakshmi Devi",    rollNo: "22IT020", dept: "IT",   year: "2nd Year", section: "B" },
-    { teamName: "Team Sigma",    leader: "Ragini Das",      rollNo: "22EC074", dept: "ECE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Pi",       leader: "Pranav Menon",    rollNo: "22IT038", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Xi",       leader: "Nikhil Varma",    rollNo: "22EC041", dept: "ECE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Zeta",     leader: "Farhan Siddiqui", rollNo: "22ME015", dept: "MECH", year: "3rd Year", section: "B" },
-    { teamName: "Team Tau",      leader: "Suresh Pillai",   rollNo: "22CS050", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Phi",      leader: "Udit Singh",      rollNo: "22CS096", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Rho",      leader: "Qasim Ali",       rollNo: "22CS011", dept: "CSE",  year: "2nd Year", section: "B" },
-    { teamName: "Team Omicron",  leader: "Oviya Suresh",    rollNo: "22CS083", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Upsilon",  leader: "Tanvi Desai",     rollNo: "22IT027", dept: "IT",   year: "2nd Year", section: "C" },
-    { teamName: "Team Chi",      leader: "Vaishnavi Rao",   rollNo: "22EC018", dept: "ECE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Psi",      leader: "Wasim Khan",      rollNo: "22CS044", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Omega",    leader: "Yamini Bhat",     rollNo: "22IT066", dept: "IT",   year: "2nd Year", section: "A" },
-    { teamName: "Team Apex",     leader: "Zoya Mirza",      rollNo: "22CS059", dept: "CSE",  year: "3rd Year", section: "B" },
+    {
+        "teamName": "Phoneix",
+        "leader": "Varun S",
+        "rollNo": "2024PECCS645",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "I"
+    },
+    {
+        "teamName": "Team Weberse",
+        "leader": "Al Jaseera Banu H",
+        "rollNo": "2024PECEE106",
+        "dept": "EEE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "TriByte",
+        "leader": "Aradhana M",
+        "rollNo": "2025PECCS135",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "FluxNext",
+        "leader": "Kumaran M",
+        "rollNo": "2024PECAI435",
+        "dept": "AI & DS",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "DYNAMIC TRIO",
+        "leader": "Harshavarthini G",
+        "rollNo": "2025PECIT162",
+        "dept": "IT",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Zevik",
+        "leader": "Johovit V",
+        "rollNo": "2024PECCS969",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "N"
+    },
+    {
+        "teamName": "Ctrl Alt Defeat",
+        "leader": "Ramya  M",
+        "rollNo": "2024PECIT254",
+        "dept": "IT",
+        "year": "III Year",
+        "section": "C"
+    },
+    {
+        "teamName": "Code vizzzz..",
+        "leader": "Arunapriya S",
+        "rollNo": "2025PECCS138",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Team Runtime error",
+        "leader": "Padmajaa S",
+        "rollNo": "2024PECCS379",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "The NullPointer",
+        "leader": "TANISHKA PANDEY",
+        "rollNo": "2024PECCS523",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "G"
+    },
+    {
+        "teamName": "Archer queens",
+        "leader": "Ashwini S",
+        "rollNo": "2024PECCS136",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Team Titans",
+        "leader": "Nambi GT",
+        "rollNo": "2024PECAI472",
+        "dept": "AI & DS",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "Zsymox",
+        "leader": "Barath Kumar Basker",
+        "rollNo": "2025PECCS628",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "I"
+    },
+    {
+        "teamName": "team_S",
+        "leader": "SUBASRI S",
+        "rollNo": "2025PECCS525",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "G"
+    },
+    {
+        "teamName": "Triple Threat",
+        "leader": "Keerthana R",
+        "rollNo": "2024PECCS293",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "D"
+    },
+    {
+        "teamName": "Team Wizards",
+        "leader": "Mohammed Arshath K H",
+        "rollNo": "2024PECCS804",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "L"
+    },
+    {
+        "teamName": "THE FIRE CODERS",
+        "leader": "SAYANTANI BANERJEE",
+        "rollNo": "2024PECCS464",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "Pulse",
+        "leader": "Lavanya J",
+        "rollNo": "2025PECIT216",
+        "dept": "IT",
+        "year": "II Year",
+        "section": "B"
+    },
+    {
+        "teamName": "Code crafters",
+        "leader": "Gayathri N",
+        "rollNo": "2024PECCS214",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "B"
+    },
+    {
+        "teamName": "Omnipotent shadow",
+        "leader": "Abishek. B",
+        "rollNo": "2024PECEE167",
+        "dept": "EEE",
+        "year": "III Year",
+        "section": "B"
+    },
+    {
+        "teamName": "AlgoNauts",
+        "leader": "Sajan Kumaran M U",
+        "rollNo": "2024PECCS820",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "L"
+    },
+    {
+        "teamName": "Flycode",
+        "leader": "Jasmine banu D",
+        "rollNo": "2025PECCS261",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "C"
+    },
+    {
+        "teamName": "dracarys",
+        "leader": "LOKESH S",
+        "rollNo": "2024PECIT504",
+        "dept": "IT",
+        "year": "III Year",
+        "section": "G"
+    },
+    {
+        "teamName": "Alpha Algorithms",
+        "leader": "GOMATHI V",
+        "rollNo": "2024PECCS220",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "B"
+    },
+    {
+        "teamName": "Black box",
+        "leader": "Pretheba.E",
+        "rollNo": "2024PECCS402",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    }
 ];
 
 // ── Round 2 — Phase 1 ─────────────────────────────────────────────────
 export const phase1Data = [
-    { teamName: "Team Alpha",   leader: "Aditya Kumar",    rollNo: "22CS001", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Delta",   leader: "Divya Nair",      rollNo: "22EC030", dept: "ECE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Gamma",   leader: "Chetan Sharma",   rollNo: "22IT010", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Beta",    leader: "Bhavya Reddy",    rollNo: "22CS045", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Lambda",  leader: "Kiran Bose",      rollNo: "22CS033", dept: "CSE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Theta",   leader: "Harsh Agarwal",   rollNo: "22IT055", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Eta",     leader: "Gayathri Iyer",   rollNo: "22CS078", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Nu",      leader: "Manish Gupta",    rollNo: "22CS067", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Kappa",   leader: "Jyothi Priya",    rollNo: "22EC062", dept: "ECE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Epsilon", leader: "Eshan Mehta",     rollNo: "22CS022", dept: "CSE",  year: "2nd Year", section: "A" },
+    {
+        "teamName": "Phoneix",
+        "leader": "Varun S",
+        "rollNo": "2024PECCS645",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "I"
+    },
+    {
+        "teamName": "Team Weberse",
+        "leader": "Al Jaseera Banu H",
+        "rollNo": "2024PECEE106",
+        "dept": "EEE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "TriByte",
+        "leader": "Aradhana M",
+        "rollNo": "2025PECCS135",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "FluxNext",
+        "leader": "Kumaran M",
+        "rollNo": "2024PECAI435",
+        "dept": "AI & DS",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "DYNAMIC TRIO",
+        "leader": "Harshavarthini G",
+        "rollNo": "2025PECIT162",
+        "dept": "IT",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Zevik",
+        "leader": "Johovit V",
+        "rollNo": "2024PECCS969",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "N"
+    },
+    {
+        "teamName": "Ctrl Alt Defeat",
+        "leader": "Ramya  M",
+        "rollNo": "2024PECIT254",
+        "dept": "IT",
+        "year": "III Year",
+        "section": "C"
+    },
+    {
+        "teamName": "Code vizzzz..",
+        "leader": "Arunapriya S",
+        "rollNo": "2025PECCS138",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Team Runtime error",
+        "leader": "Padmajaa S",
+        "rollNo": "2024PECCS379",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "The NullPointer",
+        "leader": "TANISHKA PANDEY",
+        "rollNo": "2024PECCS523",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "G"
+    }
 ];
 
 // ── Round 2 — Phase 2 ─────────────────────────────────────────────────
 export const phase2Data = [
-    { teamName: "Team Alpha",   leader: "Aditya Kumar",    rollNo: "22CS001", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Delta",   leader: "Divya Nair",      rollNo: "22EC030", dept: "ECE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Gamma",   leader: "Chetan Sharma",   rollNo: "22IT010", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Lambda",  leader: "Kiran Bose",      rollNo: "22CS033", dept: "CSE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Beta",    leader: "Bhavya Reddy",    rollNo: "22CS045", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Theta",   leader: "Harsh Agarwal",   rollNo: "22IT055", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Eta",     leader: "Gayathri Iyer",   rollNo: "22CS078", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Nu",      leader: "Manish Gupta",    rollNo: "22CS067", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Epsilon", leader: "Eshan Mehta",     rollNo: "22CS022", dept: "CSE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Kappa",   leader: "Jyothi Priya",    rollNo: "22EC062", dept: "ECE",  year: "2nd Year", section: "A" },
+    {
+        "teamName": "Phoneix",
+        "leader": "Varun S",
+        "rollNo": "2024PECCS645",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "I"
+    },
+    {
+        "teamName": "Team Weberse",
+        "leader": "Al Jaseera Banu H",
+        "rollNo": "2024PECEE106",
+        "dept": "EEE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "TriByte",
+        "leader": "Aradhana M",
+        "rollNo": "2025PECCS135",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "FluxNext",
+        "leader": "Kumaran M",
+        "rollNo": "2024PECAI435",
+        "dept": "AI & DS",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "DYNAMIC TRIO",
+        "leader": "Harshavarthini G",
+        "rollNo": "2025PECIT162",
+        "dept": "IT",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Zevik",
+        "leader": "Johovit V",
+        "rollNo": "2024PECCS969",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "N"
+    },
+    {
+        "teamName": "Ctrl Alt Defeat",
+        "leader": "Ramya  M",
+        "rollNo": "2024PECIT254",
+        "dept": "IT",
+        "year": "III Year",
+        "section": "C"
+    },
+    {
+        "teamName": "Code vizzzz..",
+        "leader": "Arunapriya S",
+        "rollNo": "2025PECCS138",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Team Runtime error",
+        "leader": "Padmajaa S",
+        "rollNo": "2024PECCS379",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "The NullPointer",
+        "leader": "TANISHKA PANDEY",
+        "rollNo": "2024PECCS523",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "G"
+    }
 ];
 
 // ── Final Standings ───────────────────────────────────────────────────
 export const overallData = [
-    { teamName: "Team Alpha",   leader: "Aditya Kumar",    rollNo: "22CS001", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Delta",   leader: "Divya Nair",      rollNo: "22EC030", dept: "ECE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Gamma",   leader: "Chetan Sharma",   rollNo: "22IT010", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Lambda",  leader: "Kiran Bose",      rollNo: "22CS033", dept: "CSE",  year: "3rd Year", section: "C" },
-    { teamName: "Team Beta",    leader: "Bhavya Reddy",    rollNo: "22CS045", dept: "CSE",  year: "3rd Year", section: "B" },
-    { teamName: "Team Theta",   leader: "Harsh Agarwal",   rollNo: "22IT055", dept: "IT",   year: "3rd Year", section: "A" },
-    { teamName: "Team Eta",     leader: "Gayathri Iyer",   rollNo: "22CS078", dept: "CSE",  year: "2nd Year", section: "C" },
-    { teamName: "Team Nu",      leader: "Manish Gupta",    rollNo: "22CS067", dept: "CSE",  year: "3rd Year", section: "A" },
-    { teamName: "Team Epsilon", leader: "Eshan Mehta",     rollNo: "22CS022", dept: "CSE",  year: "2nd Year", section: "A" },
-    { teamName: "Team Kappa",   leader: "Jyothi Priya",    rollNo: "22EC062", dept: "ECE",  year: "2nd Year", section: "A" },
-].sort((a, b) => b.score - a.score);
+    {
+        "teamName": "Phoneix",
+        "leader": "Varun S",
+        "rollNo": "2024PECCS645",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "I"
+    },
+    {
+        "teamName": "Team Weberse",
+        "leader": "Al Jaseera Banu H",
+        "rollNo": "2024PECEE106",
+        "dept": "EEE",
+        "year": "III Year",
+        "section": "A"
+    },
+    {
+        "teamName": "TriByte",
+        "leader": "Aradhana M",
+        "rollNo": "2025PECCS135",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "FluxNext",
+        "leader": "Kumaran M",
+        "rollNo": "2024PECAI435",
+        "dept": "AI & DS",
+        "year": "III Year",
+        "section": "F"
+    },
+    {
+        "teamName": "DYNAMIC TRIO",
+        "leader": "Harshavarthini G",
+        "rollNo": "2025PECIT162",
+        "dept": "IT",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Zevik",
+        "leader": "Johovit V",
+        "rollNo": "2024PECCS969",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "N"
+    },
+    {
+        "teamName": "Ctrl Alt Defeat",
+        "leader": "Ramya  M",
+        "rollNo": "2024PECIT254",
+        "dept": "IT",
+        "year": "III Year",
+        "section": "C"
+    },
+    {
+        "teamName": "Code vizzzz..",
+        "leader": "Arunapriya S",
+        "rollNo": "2025PECCS138",
+        "dept": "CSE",
+        "year": "II Year",
+        "section": "A"
+    },
+    {
+        "teamName": "Team Runtime error",
+        "leader": "Padmajaa S",
+        "rollNo": "2024PECCS379",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "E"
+    },
+    {
+        "teamName": "The NullPointer",
+        "leader": "TANISHKA PANDEY",
+        "rollNo": "2024PECCS523",
+        "dept": "CSE",
+        "year": "III Year",
+        "section": "G"
+    }
+];
