@@ -300,7 +300,7 @@ ON CONFLICT (username) DO UPDATE SET
   rank = EXCLUDED.rank;
 
 INSERT INTO public.teams (username, password_hash, team_name, members, score, rank, status)
-VALUES ('sarvajeeth_thejoananda', '533886cb5eb40f27a43068e000135e3655aef25b5c9b78b8b0f901ccc12eb33b', 'SARVAJEETH THEJOANANDA', '[{"name":"SARVAJEETH THEJOANANDA","rollNo":"2024PECCB224","dept":"CSE","year":"III Year","section":"J","email":"theinvinciblefire@gmail.com","role":"Leader"}]'::jsonb, 0, 38, 'active')
+VALUES ('sarvajeeth_thejoananda', '77de018247605c745f199ed7b9a9439bf52fb76d91e9edea8232469d9362dc8d', 'SARVAJEETH THEJOANANDA', '[{"name":"SARVAJEETH THEJOANANDA","rollNo":"2024PECCS224","dept":"CSE","year":"III Year","section":"J","email":"theinvinciblefire@gmail.com","role":"Leader"}]'::jsonb, 0, 38, 'active')
 ON CONFLICT (username) DO UPDATE SET
   password_hash = EXCLUDED.password_hash,
   team_name = EXCLUDED.team_name,

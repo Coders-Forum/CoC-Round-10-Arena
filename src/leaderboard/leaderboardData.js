@@ -311,7 +311,7 @@ export const round0Data = [
     {
         "teamName": "SARVAJEETH THEJOANANDA",
         "leader": "SARVAJEETH THEJOANANDA",
-        "rollNo": "2024PECCB224",
+        "rollNo": "2024PECCS224",
         "dept": "CSE",
         "year": "III Year",
         "section": "J"
