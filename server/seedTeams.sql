@@ -3,6 +3,28 @@
 -- Paste and execute in Supabase SQL Editor
 -- ═══════════════════════════════════════════════════════════════════
 
+-- Ensure all required columns exist in the teams table (Safe Migrations)
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS members JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS conquered_land JSONB DEFAULT NULL;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS attack_assignments JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS score INT DEFAULT 0;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS rank INT DEFAULT 1;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS total_lands INT DEFAULT 0;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+
+-- Ensure contest_state table has disabled_lands column
+CREATE TABLE IF NOT EXISTS public.contest_state (
+    id TEXT PRIMARY KEY DEFAULT 'current',
+    active_stage TEXT NOT NULL DEFAULT 'round1' CHECK (active_stage IN ('round0', 'round1', 'round2_phase1', 'round2_phase2', 'round2_phase3')),
+    disabled_lands JSONB DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS disabled_lands JSONB DEFAULT '[]'::jsonb;
+
+-- ═══════════════════════════════════════════════════════════════════
+-- 40 TEAMS DATA INSERTS
+-- ═══════════════════════════════════════════════════════════════════
+
 INSERT INTO public.teams (username, password_hash, team_name, members, score, rank, status)
 VALUES ('phoneix', 'cdf3c0bb0bfdd7e976f2639cf04f3b59bff16476c6484bf5562bd9ae11c2e72e', 'Phoneix', '[{"name":"Varun S","rollNo":"2024PECCS645","dept":"CSE","year":"III Year","section":"I","email":"svarun8507377@gmail.com","role":"Leader"}]'::jsonb, 0, 1, 'active')
 ON CONFLICT (username) DO UPDATE SET
