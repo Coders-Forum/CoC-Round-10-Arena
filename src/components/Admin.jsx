@@ -412,10 +412,6 @@ export default function Admin() {
             >
               {loading ? "AUTHENTICATING..." : "LOGIN AS ADMIN →"}
             </button>
-
-            <p style={{ fontSize: "11px", color: "#6B7280", textAlign: "center", marginTop: "8px" }}>
-              Default dev credentials: <code>admin</code> / <code>Admin@COC2026</code>
-            </p>
           </form>
         ) : (
           /* ── AUTHENTICATED: Show Stage Control Panel ── */
