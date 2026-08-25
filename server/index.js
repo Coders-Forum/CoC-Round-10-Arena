@@ -176,12 +176,94 @@ function isValidUsername(u) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  IN-MEMORY STORE & SESSION MANAGEMENT
+//  IN-MEMORY STORE & CACHE (Eliminates Supabase connection strain)
 // ═══════════════════════════════════════════════════════════════
 
 const USERS = new Map();
 const SESSIONS = new Map();
 const SESSION_TTL = 4 * 60 * 60 * 1000;
+
+// High-performance cache for all teams (loaded once, served from memory)
+const TEAMS_CACHE = new Map();
+let teamsCacheExpiresAt = 0;
+const TEAMS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache
+
+async function refreshTeamsCache(force = false) {
+  const now = Date.now();
+  if (!force && now < teamsCacheExpiresAt && TEAMS_CACHE.size > 0) {
+    return;
+  }
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("teams").select("*");
+      if (!error && Array.isArray(data)) {
+        TEAMS_CACHE.clear();
+        for (const t of data) {
+          if (t.username) {
+            TEAMS_CACHE.set(t.username.toLowerCase(), {
+              username: t.username,
+              passwordHash: t.password_hash,
+              teamName: t.team_name,
+              members: t.members ?? [],
+              conqueredLand: t.conquered_land ?? null,
+              attackAssignments: t.attack_assignments ?? [],
+              score: t.score ?? 0,
+              rank: t.rank ?? 1,
+              totalLands: t.total_lands ?? 0,
+              status: t.status ?? "active",
+            });
+          }
+        }
+        teamsCacheExpiresAt = now + TEAMS_CACHE_TTL;
+        console.log(`⚡ [Teams Cache] Cached ${TEAMS_CACHE.size} teams into memory (0 DB queries per login).`);
+      }
+    } catch (dbErr) {
+      console.error("[Supabase Cache Refresh Error]:", dbErr.message);
+    }
+  }
+}
+
+async function getCachedUser(username) {
+  const uname = String(username).toLowerCase();
+  await refreshTeamsCache();
+  
+  if (TEAMS_CACHE.has(uname)) {
+    return TEAMS_CACHE.get(uname);
+  }
+
+  // Fallback: If not in cache (e.g. newly inserted team), do a single lookup
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("teams")
+        .select("*")
+        .eq("username", uname)
+        .maybeSingle();
+
+      if (!error && data) {
+        const user = {
+          username: data.username,
+          passwordHash: data.password_hash,
+          teamName: data.team_name,
+          members: data.members ?? [],
+          conqueredLand: data.conquered_land ?? null,
+          attackAssignments: data.attack_assignments ?? [],
+          score: data.score ?? 0,
+          rank: data.rank ?? 1,
+          totalLands: data.total_lands ?? 0,
+          status: data.status ?? "active",
+        };
+        TEAMS_CACHE.set(uname, user);
+        return user;
+      }
+    } catch (err) {
+      console.error("[Fallback Lookup Error]:", err.message);
+    }
+  }
+
+  return USERS.get(uname) || null;
+}
 
 setInterval(() => {
   const now = Date.now();
@@ -288,38 +370,7 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
   }
 
   const username = rawUsername.toLowerCase();
-  let user = null;
-
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from("teams")
-        .select("*")
-        .eq("username", username)
-        .maybeSingle();
-
-      if (!error && data) {
-        user = {
-          username: data.username,
-          passwordHash: data.password_hash,
-          teamName: data.team_name,
-          members: data.members ?? [],
-          conqueredLand: data.conquered_land ?? null,
-          attackAssignments: data.attack_assignments ?? [],
-          score: data.score ?? 0,
-          rank: data.rank ?? 1,
-          totalLands: data.total_lands ?? 0,
-          status: data.status ?? "active",
-        };
-      }
-    } catch (dbErr) {
-      console.error("[Supabase Query Error]:", dbErr.message);
-    }
-  }
-
-  if (!user) {
-    user = USERS.get(username);
-  }
+  const user = await getCachedUser(username);
 
   const DUMMY_HASH = hashPassword("__dummy_fallback_password__");
   const hashToCheck = user?.passwordHash ?? DUMMY_HASH;
@@ -387,7 +438,15 @@ const ADMIN_USERNAME = rawAdminUser ? rawAdminUser.toLowerCase() : "";
 const ADMIN_PASSWORD_HASH = rawAdminPass ? hashPassword(rawAdminPass) : "";
 const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
 
+let stateCacheExpiresAt = 0;
+const STATE_CACHE_TTL = 15 * 1000; // 15 seconds cache
+
 async function getContestState() {
+  const now = Date.now();
+  if (now < stateCacheExpiresAt) {
+    return { activeStage: memoryActiveStage, disabledLands: memoryDisabledLands };
+  }
+
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -403,6 +462,7 @@ async function getContestState() {
         if (Array.isArray(data.disabled_lands)) {
           memoryDisabledLands = data.disabled_lands;
         }
+        stateCacheExpiresAt = now + STATE_CACHE_TTL;
       }
     } catch (err) {
       console.error("[Supabase State Query Error]:", err.message);
@@ -441,6 +501,7 @@ async function setActiveContestStage(newStage) {
   }
 
   memoryActiveStage = newStage;
+  stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
   return memoryActiveStage;
 }
 
@@ -470,6 +531,7 @@ async function setDisabledLands(lands) {
   }
 
   memoryDisabledLands = sanitized;
+  stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
   return memoryDisabledLands;
 }
 
