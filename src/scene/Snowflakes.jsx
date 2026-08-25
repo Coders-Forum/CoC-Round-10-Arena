@@ -9,11 +9,9 @@ export default function Snowflakes({ count = 120 }) {
         const temp = []
         for (let i = 0; i < count; i++) {
             temp.push({
-                position: [
-                    (Math.random() - 0.5) * 12,   // spread wide
-                    Math.random() * 14,            // start at various heights
-                    (Math.random() - 0.5) * 12
-                ],
+                x: (Math.random() - 0.5) * 12,   // spread wide
+                y: Math.random() * 14,            // start at various heights
+                z: (Math.random() - 0.5) * 12,
                 speed: 0.008 + Math.random() * 0.015,  // slow gentle fall
                 drift: Math.random() * 0.003,           // slight sideways drift
                 wobble: Math.random() * Math.PI * 2     // wobble offset
@@ -22,40 +20,52 @@ export default function Snowflakes({ count = 120 }) {
         return temp
     }, [count])
 
+    const [posArray, posAttr] = useMemo(() => {
+        const arr = new Float32Array(count * 3)
+        for (let i = 0; i < count; i++) {
+            arr[i * 3] = particles[i].x
+            arr[i * 3 + 1] = particles[i].y
+            arr[i * 3 + 2] = particles[i].z
+        }
+        return [arr, new THREE.BufferAttribute(arr, 3)]
+    }, [particles, count])
+
     useFrame(({ clock }) => {
+        if (!mesh.current) return
         const t = clock.getElapsedTime()
 
-        particles.forEach((p) => {
+        for (let i = 0; i < count; i++) {
+            const p = particles[i]
             // fall down
-            p.position[1] -= p.speed
+            p.y -= p.speed
 
             // gentle sideways wobble like real snow
-            p.position[0] += Math.sin(t * 0.5 + p.wobble) * 0.003
-            p.position[2] += Math.cos(t * 0.4 + p.wobble) * 0.002
+            p.x += Math.sin(t * 0.5 + p.wobble) * 0.003
+            p.z += Math.cos(t * 0.4 + p.wobble) * 0.002
 
             // reset when hits bottom — fade out effect
-            if (p.position[1] < -3) {
-                p.position[1] = 10 + Math.random() * 4  // respawn at top
-                p.position[0] = (Math.random() - 0.5) * 12
-                p.position[2] = (Math.random() - 0.5) * 12
+            if (p.y < -3) {
+                p.y = 10 + Math.random() * 4  // respawn at top
+                p.x = (Math.random() - 0.5) * 12
+                p.z = (Math.random() - 0.5) * 12
             }
-        })
 
-        if (!mesh.current) return
+            posArray[i * 3] = p.x
+            posArray[i * 3 + 1] = p.y
+            posArray[i * 3 + 2] = p.z
+        }
 
-        mesh.current.geometry.setAttribute(
-            "position",
-            new THREE.Float32BufferAttribute(
-                particles.flatMap((p) => p.position),
-                3
-            )
-        )
-        mesh.current.geometry.attributes.position.needsUpdate = true
+        posAttr.needsUpdate = true
     })
 
     return (
         <points ref={mesh}>
-            <bufferGeometry />
+            <bufferGeometry>
+                <bufferAttribute
+                    attach="attributes-position"
+                    {...posAttr}
+                />
+            </bufferGeometry>
             <pointsMaterial
                 size={0.12}
                 color="#ddeeff"
@@ -66,4 +76,4 @@ export default function Snowflakes({ count = 120 }) {
             />
         </points>
     )
-}
+}
