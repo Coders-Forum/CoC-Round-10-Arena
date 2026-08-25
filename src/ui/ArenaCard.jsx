@@ -1,3 +1,15 @@
+// Inject card keyframes once into <head> — avoids 25× duplicate <style> blocks in DOM
+if (typeof document !== "undefined" && !document.getElementById("arena-card-keyframes")) {
+    const s = document.createElement("style")
+    s.id = "arena-card-keyframes"
+    s.textContent = `
+        @keyframes cardFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+        @keyframes glowSweep { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        @keyframes glowPulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.2); } }
+    `
+    document.head.appendChild(s)
+}
+
 export default function ArenaCard({ side, accentColor, glowColor, title, subtitle, tags, description, width }) {
     const isLeft = side === "left"
     return (
@@ -13,11 +25,6 @@ export default function ArenaCard({ side, accentColor, glowColor, title, subtitl
                     <span key={i} style={{ background: `${accentColor}22`, border: `1px solid ${accentColor}55`, color: accentColor, borderRadius: "20px", padding: "3px 10px", fontSize: "10px", letterSpacing: "1px", fontFamily: "'Clash Display', sans-serif", textTransform: "uppercase" }}>{tag}</span>
                 ))}
             </div>
-            <style>{`
-                @keyframes cardFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
-                @keyframes glowSweep { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-                @keyframes glowPulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.2); } }
-            `}</style>
         </div>
     )
 }

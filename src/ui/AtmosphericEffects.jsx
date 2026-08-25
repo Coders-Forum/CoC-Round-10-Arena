@@ -32,7 +32,17 @@ export default function AtmosphericEffects({ effectType = "mist", color = "#ffff
             pulse: Math.random() * Math.PI * 2
         }))
 
-        const render = () => {
+        let lastTime = 0
+        const TARGET_FPS = 30
+        const FRAME_MS = 1000 / TARGET_FPS
+
+        const render = (now) => {
+            if (now - lastTime < FRAME_MS) {
+                animId = requestAnimationFrame(render)
+                return
+            }
+            lastTime = now
+
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
             particles.forEach((p) => {
@@ -67,7 +77,7 @@ export default function AtmosphericEffects({ effectType = "mist", color = "#ffff
             animId = requestAnimationFrame(render)
         }
 
-        render()
+        render(0)
 
         return () => {
             window.removeEventListener("resize", updateSize)

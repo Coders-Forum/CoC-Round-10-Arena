@@ -29,14 +29,16 @@ export default defineConfig({
     target: 'es2020',
     minify: 'esbuild',
     cssCodeSplit: true,
-    chunkSizeWarningLimit: 1200,
+    chunkSizeWarningLimit: 1600,
     assetsInlineLimit: 4096,
     rollupOptions: {
       output: {
         manualChunks: {
           three: ['three'],
           r3f: ['@react-three/fiber', '@react-three/drei'],
-          react: ['react', 'react-dom']
+          react: ['react', 'react-dom'],
+          // Admin panel is never needed by contestants — keep it in its own lazy chunk
+          admin: ['./src/components/Admin.jsx'],
         }
       }
     }

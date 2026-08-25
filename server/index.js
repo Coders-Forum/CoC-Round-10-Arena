@@ -439,7 +439,7 @@ const ADMIN_PASSWORD_HASH = rawAdminPass ? hashPassword(rawAdminPass) : "";
 const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
 
 let stateCacheExpiresAt = 0;
-const STATE_CACHE_TTL = 15 * 1000; // 15 seconds cache
+const STATE_CACHE_TTL = 30 * 1000; // 30 seconds — admin writes always invalidate immediately
 
 async function getContestState() {
   const now = Date.now();
@@ -809,6 +809,21 @@ if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
 ║  POST /api/login           — team    ║
 ╚══════════════════════════════════════╝
     `);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STARTUP CACHE WARM — Fills memory caches on cold start
+//  so the first wave of concurrent users gets instant responses
+// ═══════════════════════════════════════════════════════════════
+if (supabase) {
+  Promise.all([
+    refreshTeamsCache(true),
+    getContestState(),
+  ]).then(([, state]) => {
+    console.log(`🚀 [Startup] Cache warm complete — ${TEAMS_CACHE.size} teams, stage: ${state.activeStage}`);
+  }).catch((err) => {
+    console.warn("⚠️ [Startup] Cache warm failed (non-fatal):", err.message);
   });
 }
 
