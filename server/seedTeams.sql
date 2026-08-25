@@ -22,6 +22,30 @@ CREATE TABLE IF NOT EXISTS public.contest_state (
 ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS disabled_lands JSONB DEFAULT '[]'::jsonb;
 
 -- ═══════════════════════════════════════════════════════════════════
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ═══════════════════════════════════════════════════════════════════
+ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contest_state ENABLE ROW LEVEL SECURITY;
+
+-- Allow read lookups on teams for login authentication
+DROP POLICY IF EXISTS "Allow public read on teams" ON public.teams;
+CREATE POLICY "Allow public read on teams" ON public.teams
+FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow service role all on teams" ON public.teams;
+CREATE POLICY "Allow service role all on teams" ON public.teams
+FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- Allow contest state read and update
+DROP POLICY IF EXISTS "Allow public read on contest_state" ON public.contest_state;
+CREATE POLICY "Allow public read on contest_state" ON public.contest_state
+FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow all on contest_state" ON public.contest_state;
+CREATE POLICY "Allow all on contest_state" ON public.contest_state
+FOR ALL USING (true) WITH CHECK (true);
+
+-- ═══════════════════════════════════════════════════════════════════
 -- 40 TEAMS DATA INSERTS
 -- ═══════════════════════════════════════════════════════════════════
 
