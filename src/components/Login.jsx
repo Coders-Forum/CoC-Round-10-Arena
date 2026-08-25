@@ -203,7 +203,6 @@ export default function Login() {
               onChange={(e) => setUsername(e.target.value)}
               onFocus={(e)  => (e.target.style.borderColor = "#FFC451")}
               onBlur={(e)   => (e.target.style.borderColor = "rgba(255,196,81,0.25)")}
-              placeholder="e.g. phoneix"
               autoComplete="username"
               autoCapitalize="none"
               spellCheck="false"
@@ -226,7 +225,6 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 onFocus={(e)  => (e.target.style.borderColor = "#FFC451")}
                 onBlur={(e)   => (e.target.style.borderColor = "rgba(255,196,81,0.25)")}
-                placeholder="e.g. 2024PECCS645"
                 autoComplete="current-password"
                 disabled={loading}
                 style={{ ...inputStyle, paddingRight: "44px" }}
