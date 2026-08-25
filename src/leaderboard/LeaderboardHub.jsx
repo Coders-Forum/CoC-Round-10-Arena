@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom"
 import RankedLeaderboard from "./RankedLeaderboard.jsx"
 import { round0Data, round1Data, phase1Data, phase2Data, overallData } from "./leaderboardData.js"
 import { getLandingPageUrl } from "../config/contestConfig.js"
-import { isLoggedIn } from "../utils/sessionSecurity.js"
 
 const FONT = "'Clash', 'Clash Display', sans-serif"
 
@@ -25,7 +24,6 @@ export default function LeaderboardHub() {
     )
     const navigate = useNavigate()
     const current = TABS.find((t) => t.key === activeTab) || TABS[0]
-    const userAuthed = isLoggedIn()
 
     useEffect(() => {
         const handleResize = () => setIsSmallScreen(window.innerWidth < 768)
@@ -132,52 +130,28 @@ export default function LeaderboardHub() {
                         <span>{isSmallScreen ? "LANDING" : "LANDING PAGE"}</span>
                     </a>
 
-                    {userAuthed ? (
-                        <button
-                            onClick={() => navigate("/arena")}
-                            style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "5px",
-                                background: "#FFC451",
-                                border: "1px solid #FFC451",
-                                color: "#000",
-                                fontSize: isSmallScreen ? "10px" : "11px",
-                                fontWeight: "800",
-                                letterSpacing: "0.1em",
-                                padding: isSmallScreen ? "5px 10px" : "6px 14px",
-                                borderRadius: "100px",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                                boxShadow: "0 0 12px rgba(255,196,81,0.3)"
-                            }}
-                        >
-                            <span>⚔</span>
-                            <span>ARENA</span>
-                        </button>
-                    ) : (
-                        <button
-                            onClick={() => navigate("/login")}
-                            style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "5px",
-                                background: "rgba(255,196,81,0.15)",
-                                border: "1px solid rgba(255,196,81,0.35)",
-                                color: "#FFC451",
-                                fontSize: isSmallScreen ? "10px" : "11px",
-                                fontWeight: "700",
-                                letterSpacing: "0.1em",
-                                padding: isSmallScreen ? "5px 10px" : "6px 14px",
-                                borderRadius: "100px",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease"
-                            }}
-                        >
-                            <span>🧑‍💻</span>
-                            <span>LOGIN</span>
-                        </button>
-                    )}
+                    <button
+                        onClick={() => navigate("/arena")}
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            background: "#FFC451",
+                            border: "1px solid #FFC451",
+                            color: "#000",
+                            fontSize: isSmallScreen ? "10px" : "11px",
+                            fontWeight: "800",
+                            letterSpacing: "0.1em",
+                            padding: isSmallScreen ? "5px 10px" : "6px 14px",
+                            borderRadius: "100px",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            boxShadow: "0 0 12px rgba(255,196,81,0.3)"
+                        }}
+                    >
+                        <span>⚔</span>
+                        <span>ARENA</span>
+                    </button>
                 </div>
             </header>
 
@@ -290,7 +264,7 @@ export default function LeaderboardHub() {
                             </a>
 
                             <button
-                                onClick={() => navigate("/login")}
+                                onClick={() => navigate("/arena")}
                                 style={{
                                     display: "inline-flex",
                                     alignItems: "center",

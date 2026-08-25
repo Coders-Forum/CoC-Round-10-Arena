@@ -3,26 +3,35 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import Scene from "./scene/Scene";
 import Admin from "./components/Admin";
 import LeaderboardHub from "./leaderboard/LeaderboardHub";
 
 // ═══════════════════════════════════════════════════════════════
-//  APP ROUTER — Login removed; arena is public
+//  Helper to redirect to /arena while preserving all query parameters
+// ═══════════════════════════════════════════════════════════════
+function RedirectToArena() {
+  const location = useLocation();
+  return <Navigate to={`/arena${location.search}`} replace />;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  APP ROUTER — Login removed; direct redirect to arena
 // ═══════════════════════════════════════════════════════════════
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Arena — now public, no auth required */}
+        {/* Arena — direct public access */}
         <Route path="/arena" element={<Scene />} />
 
-        {/* Root → Arena */}
-        <Route path="/" element={<Navigate to="/arena" replace />} />
+        {/* Root → Arena (Preserving params) */}
+        <Route path="/" element={<RedirectToArena />} />
 
-        {/* Old login bookmarks → Arena */}
-        <Route path="/login" element={<Navigate to="/arena" replace />} />
+        {/* All login paths → Arena (Preserving params) */}
+        <Route path="/login" element={<RedirectToArena />} />
 
         {/* Admin Stage Control Panel */}
         <Route path="/admin" element={<Admin />} />
@@ -32,10 +41,9 @@ export default function App() {
         <Route path="/results" element={<LeaderboardHub />} />
         <Route path="/leaderboard" element={<LeaderboardHub />} />
 
-        {/* Catch-all → Arena */}
-        <Route path="*" element={<Navigate to="/arena" replace />} />
+        {/* Catch-all → Arena (Preserving params) */}
+        <Route path="*" element={<RedirectToArena />} />
       </Routes>
     </BrowserRouter>
   );
 }
-

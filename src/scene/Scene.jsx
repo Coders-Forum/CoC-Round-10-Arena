@@ -743,12 +743,6 @@ export default function Scene() {
     const location = useLocation()
     const { round } = validateContestParams(location.search)
 
-    const handleLogout = () => {
-        clearSession()
-        const validated = validateContestParams(location.search)
-        navigate(`/login${validated.queryString}`, { state: { reason: "logout" } })
-    }
-
     useEffect(() => {
         const mq = window.matchMedia(`(max-width: ${CAROUSEL_BREAKPOINT - 1}px)`)
         const handler = (e) => setIsSmallScreen(e.matches)
@@ -907,41 +901,6 @@ export default function Scene() {
                         <span>←</span>
                         <span>{isSmallScreen ? "LANDING" : "LANDING PAGE"}</span>
                     </a>
-
-                    <button
-                        onClick={handleLogout}
-                        title="Logout from arena"
-                        aria-label="Logout"
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            background: "rgba(0,0,0,0.5)",
-                            border: "1px solid rgba(255,196,81,0.25)",
-                            color: "#FFC451",
-                            fontSize: isSmallScreen ? "10px" : "11px",
-                            fontWeight: "600",
-                            letterSpacing: "0.1em",
-                            padding: isSmallScreen ? "5px 9px" : "6px 14px",
-                            borderRadius: "100px",
-                            cursor: "pointer",
-                            transition: "all 0.25s ease",
-                            boxShadow: "0 2px 10px rgba(0,0,0,0.4)"
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = "#DC2626"
-                            e.currentTarget.style.background = "rgba(220,38,38,0.25)"
-                            e.currentTarget.style.boxShadow = "0 0 15px rgba(220,38,38,0.35)"
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = "rgba(255,196,81,0.25)"
-                            e.currentTarget.style.background = "rgba(0,0,0,0.5)"
-                            e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.4)"
-                        }}
-                    >
-                        <span style={{ fontSize: isSmallScreen ? "10px" : "12px", opacity: 0.85 }}>🚪</span>
-                        <span>LOGOUT</span>
-                    </button>
                 </div>
             </header>
 
@@ -977,7 +936,7 @@ export default function Scene() {
                         </p>
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
                             <button
-                                onClick={() => navigate(`/login${getStageQuery(accessState.activeStage)}`, { replace: true })}
+                                onClick={() => navigate(`/arena${getStageQuery(accessState.activeStage)}`, { replace: true })}
                                 style={{
                                     width: "100%",
                                     background: "#FFC451",
@@ -992,7 +951,7 @@ export default function Scene() {
                                     transition: "all 0.2s ease"
                                 }}
                             >
-                                LOGIN TO ACTIVE STAGE →
+                                ENTER ACTIVE STAGE →
                             </button>
 
                             <a
