@@ -1,9 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
 import { getLandingPageUrl, CONTEST_CONFIG } from "../config/contestConfig";
 
+function getStoredAdminToken() {
+  try {
+    return sessionStorage.getItem("coc_admin_token") || localStorage.getItem("coc_admin_token") || "";
+  } catch {
+    return "";
+  }
+}
+
+function setStoredAdminToken(token) {
+  try { sessionStorage.setItem("coc_admin_token", token); } catch {}
+  try { localStorage.setItem("coc_admin_token", token); } catch {}
+}
+
+function removeStoredAdminToken() {
+  try { sessionStorage.removeItem("coc_admin_token"); } catch {}
+  try { localStorage.removeItem("coc_admin_token"); } catch {}
+}
+
 export default function Admin() {
   const [adminToken, setAdminToken] = useState(() => {
-    return sessionStorage.getItem("coc_admin_token") || "";
+    return getStoredAdminToken();
   });
   const [activeStage, setActiveStage] = useState("round1");
   const [selectedStage, setSelectedStage] = useState("round1");
@@ -47,7 +65,10 @@ export default function Admin() {
   // Handle Admin Login
   const handleLogin = async (e) => {
     e?.preventDefault();
-    if (!loginForm.username || !loginForm.password) {
+    const cleanUsername = (loginForm.username || "").trim();
+    const cleanPassword = loginForm.password || "";
+
+    if (!cleanUsername || !cleanPassword) {
       setStatusMsg("Please enter username and password.");
       setStatusType("error");
       return;
@@ -63,13 +84,16 @@ export default function Admin() {
           "Content-Type": "application/json",
           "X-Requested-With": "XMLHttpRequest",
         },
-        body: JSON.stringify(loginForm),
+        body: JSON.stringify({
+          username: cleanUsername,
+          password: cleanPassword,
+        }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success && data.adminToken) {
-        sessionStorage.setItem("coc_admin_token", data.adminToken);
+        setStoredAdminToken(data.adminToken);
         setAdminToken(data.adminToken);
         if (data.activeStage) {
           setActiveStage(data.activeStage);
@@ -121,7 +145,7 @@ export default function Admin() {
         setStatusType("success");
       } else {
         if (res.status === 401) {
-          sessionStorage.removeItem("coc_admin_token");
+          removeStoredAdminToken();
           setAdminToken("");
           setStatusMsg("Session expired. Please log in again.");
           setStatusType("error");
@@ -183,7 +207,7 @@ export default function Admin() {
         setStatusType("success");
       } else {
         if (res.status === 401) {
-          sessionStorage.removeItem("coc_admin_token");
+          removeStoredAdminToken();
           setAdminToken("");
           setStatusMsg("Session expired. Please log in again.");
           setStatusType("error");
@@ -205,7 +229,7 @@ export default function Admin() {
       method: "POST",
       headers: { "X-Admin-Token": adminToken, "X-Requested-With": "XMLHttpRequest" },
     }).catch(() => {});
-    sessionStorage.removeItem("coc_admin_token");
+    removeStoredAdminToken();
     setAdminToken("");
     setStatusMsg("Admin logged out.");
     setStatusType("info");
@@ -356,6 +380,10 @@ export default function Admin() {
                 placeholder="Enter admin username"
                 value={loginForm.username}
                 onChange={(e) => setLoginForm((p) => ({ ...p, username: e.target.value }))}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                autoComplete="username"
                 style={{
                   width: "100%",
                   padding: "12px 16px",
@@ -379,6 +407,10 @@ export default function Admin() {
                 placeholder="••••••••••••"
                 value={loginForm.password}
                 onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                autoComplete="current-password"
                 style={{
                   width: "100%",
                   padding: "12px 16px",
