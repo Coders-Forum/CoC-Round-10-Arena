@@ -4,9 +4,11 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Target URL: Test local server or live Vercel
+// Configurable options
 const TARGET_URL = process.env.TARGET_URL || "https://clashofcoders-theta.vercel.app/api/login";
 const CONCURRENCY = parseInt(process.env.CONCURRENCY || "100", 10);
+const DURATION_SECS = parseInt(process.env.DURATION || "0", 10); // 0 = single burst, >0 = continuous duration in seconds
+const PACING_MS = parseInt(process.env.PACING_MS || "300", 10); // Delay between iterations
 
 // Load credentials from CSV
 const csvPath = path.join(__dirname, "users.csv");
@@ -17,9 +19,11 @@ const users = lines.map(line => {
 }).filter(u => u.username && u.password);
 
 console.log("═══════════════════════════════════════════════════════════════");
-console.log(`🚀 STARTING LOAD TEST: ${CONCURRENCY} CONCURRENT LOGINS`);
-console.log(`🎯 Target Endpoint: ${TARGET_URL}`);
-console.log(`👥 Total Test Users in Pool: ${users.length}`);
+console.log(`🚀 STARTING LOAD TEST`);
+console.log(`🎯 Target Endpoint:    ${TARGET_URL}`);
+console.log(`👥 Concurrent Users:   ${CONCURRENCY}`);
+console.log(`⏳ Test Mode:          ${DURATION_SECS > 0 ? `${DURATION_SECS} seconds duration` : "Single burst"}`);
+console.log(`📦 Available Users:    ${users.length}`);
 console.log("═══════════════════════════════════════════════════════════════\n");
 
 async function singleLogin(user, index) {
@@ -30,6 +34,7 @@ async function singleLogin(user, index) {
       headers: {
         "Content-Type": "application/json",
         "X-Requested-With": "XMLHttpRequest",
+        "Connection": "close",
       },
       body: JSON.stringify({
         username: user.username,
@@ -62,41 +67,64 @@ async function singleLogin(user, index) {
 }
 
 async function run() {
-  const tasks = [];
-  const startTime = performance.now();
+  const results = [];
+  const overallStart = performance.now();
 
-  for (let i = 0; i < CONCURRENCY; i++) {
-    const user = users[i % users.length];
-    tasks.push(singleLogin(user, i + 1));
+  if (DURATION_SECS > 0) {
+    const endTime = Date.now() + DURATION_SECS * 1000;
+    let reqCounter = 0;
+
+    const worker = async (workerId) => {
+      while (Date.now() < endTime) {
+        reqCounter++;
+        const user = users[(workerId + reqCounter) % users.length];
+        const res = await singleLogin(user, reqCounter);
+        results.push(res);
+        if (PACING_MS > 0) {
+          await new Promise(r => setTimeout(r, PACING_MS));
+        }
+      }
+    };
+
+    const workers = Array.from({ length: CONCURRENCY }, (_, i) => worker(i));
+    await Promise.all(workers);
+  } else {
+    // Single burst
+    const tasks = Array.from({ length: CONCURRENCY }, (_, i) => {
+      const user = users[i % users.length];
+      return singleLogin(user, i + 1);
+    });
+    const burstResults = await Promise.all(tasks);
+    results.push(...burstResults);
   }
 
-  const results = await Promise.all(tasks);
-  const totalDuration = Math.round(performance.now() - startTime);
+  const totalDuration = Math.round(performance.now() - overallStart);
 
   // Compute metrics
   const successful = results.filter(r => r.success);
   const failed = results.filter(r => !r.success);
   const times = results.map(r => r.timeMs).sort((a, b) => a - b);
 
-  const avgTime = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
-  const minTime = times[0];
-  const maxTime = times[times.length - 1];
-  const p50 = times[Math.floor(times.length * 0.5)];
-  const p95 = times[Math.floor(times.length * 0.95)];
-  const p99 = times[Math.floor(times.length * 0.99)];
+  const avgTime = Math.round(times.reduce((a, b) => a + b, 0) / (times.length || 1));
+  const minTime = times[0] || 0;
+  const maxTime = times[times.length - 1] || 0;
+  const p50 = times[Math.floor(times.length * 0.5)] || 0;
+  const p95 = times[Math.floor(times.length * 0.95)] || 0;
+  const p99 = times[Math.floor(times.length * 0.99)] || 0;
 
   console.log("───────────────────────────────────────────────────────────────");
   console.log("📊 LOAD TEST RESULTS SUMMARY");
   console.log("───────────────────────────────────────────────────────────────");
   console.log(`Total Requests:      ${results.length}`);
-  console.log(`✅ Success (200 OK):  ${successful.length} (${((successful.length / results.length) * 100).toFixed(1)}%)`);
-  console.log(`❌ Failed:           ${failed.length} (${((failed.length / results.length) * 100).toFixed(1)}%)`);
-  console.log(`⏱️ Total Time:        ${totalDuration} ms`);
+  console.log(`✅ Success (200 OK):  ${successful.length} (${((successful.length / (results.length || 1)) * 100).toFixed(1)}%)`);
+  console.log(`❌ Failed:           ${failed.length} (${((failed.length / (results.length || 1)) * 100).toFixed(1)}%)`);
+  console.log(`⏱️ Total Time:        ${(totalDuration / 1000).toFixed(2)} seconds`);
   console.log(`⚡ Avg Response Time: ${avgTime} ms`);
   console.log(`🚀 Min / Max:         ${minTime} ms / ${maxTime} ms`);
   console.log(`📈 50th Percentile:   ${p50} ms`);
   console.log(`📈 95th Percentile:   ${p95} ms`);
   console.log(`📈 99th Percentile:   ${p99} ms`);
+  console.log(`📊 Throughput:        ${((results.length / (totalDuration / 1000)) || 0).toFixed(2)} req/sec`);
   console.log("───────────────────────────────────────────────────────────────");
 
   if (failed.length > 0) {
@@ -105,7 +133,7 @@ async function run() {
       console.log(`   User: ${f.user} | Status: ${f.status} | Error: ${f.message} (${f.timeMs}ms)`);
     });
   } else {
-    console.log("\n🎉 ALL 100 CONCURRENT LOGINS SUCCEEDED WITH 0 ERRORS!");
+    console.log(`\n🎉 ALL ${results.length} LOGINS SUCCEEDED WITH 0 ERRORS!`);
   }
 }
 

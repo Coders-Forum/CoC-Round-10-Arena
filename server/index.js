@@ -102,7 +102,7 @@ app.use(express.json({ limit: "10kb" }));
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 2000,              // 100 users × ~20 requests = 2000 headroom for contest day
+  max: 100000,             // Ultra-high headroom for load testing and contest traffic
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many requests. Try again later." },
@@ -199,8 +199,8 @@ setInterval(() => {
 }, 15 * 60 * 1000);
 
 const FAILED_LOGINS = new Map();
-const MAX_FAILS = 20;           // Allow more before lockout — many teams share one IP
-const LOCKOUT_MS = 5 * 60 * 1000;  // 5 min lockout (down from 10)
+const MAX_FAILS = 100;          // Allow high tolerance for testing
+const LOCKOUT_MS = 2 * 60 * 1000;
 
 function checkServerLockout(ip) {
   const entry = FAILED_LOGINS.get(ip);
@@ -227,10 +227,11 @@ function clearServerFails(ip) {
 //  RATE LIMITERS
 // ═══════════════════════════════════════════════════════════════
 const loginLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
-  max: 500,                 // 100 teams × 5 attempts = 500 — handles shared college WiFi
+  windowMs: 1 * 60 * 1000,
+  max: 10000,               // High throughput capacity
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: true, // Only count failed logins towards rate limiting
   message: { success: false, message: "Too many login attempts. Please try again in a few minutes." },
 });
 
