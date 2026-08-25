@@ -640,39 +640,7 @@ app.all(["/admin/contest/disabled-lands", "/api/admin/contest/disabled-lands", "
 //  CONTEST ACCESS & ELIGIBILITY VERIFICATION API
 // ═══════════════════════════════════════════════════════════════
 app.all(["/contest/verify-access", "/api/contest/verify-access", "/api/contest/access"], async (req, res) => {
-  const token =
-    req.headers["x-session-token"] ||
-    req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      allowed: false,
-      message: "Authentication session required.",
-    });
-  }
-
-  const session = SESSIONS.get(token);
-  if (!session || Date.now() > session.expiresAt) {
-    if (session) SESSIONS.delete(token);
-    return res.status(401).json({
-      success: false,
-      allowed: false,
-      message: "Session expired. Please log in again.",
-    });
-  }
-
-  const user = session.userData || USERS.get(session.username);
-  if (!user) {
-    return res.status(404).json({ success: false, allowed: false, message: "Team record not found." });
-  }
-
-  if (user.status === "disqualified") {
-    return res.status(403).json({
-      success: false,
-      allowed: false,
-      message: "This team is disqualified from the contest.",
-    });
-  }
+  // ── Arena is public — no login/session required ──
 
   // Parse requested stage
   const rawRound = req.body?.round || req.query?.round;
@@ -717,7 +685,6 @@ app.all(["/contest/verify-access", "/api/contest/verify-access", "/api/contest/a
     activeStage,
     requestedStage,
     disabledLands: memoryDisabledLands,
-    teamName: user.teamName,
   });
 });
 
