@@ -758,6 +758,17 @@ export default function Scene() {
         return () => mq.removeEventListener("change", handler)
     }, [])
 
+    // ── Session & Query Param Guard ──
+    useEffect(() => {
+        const token = sessionStorage.getItem(SESSION_KEY)
+        const { queryString } = validateContestParams(location.search)
+        if (!token) {
+            navigate(`/login${queryString}`, { replace: true })
+        } else if (!location.search) {
+            navigate(`/arena${queryString}`, { replace: true })
+        }
+    }, [location.search, navigate])
+
     // ── Backend Stage & Eligibility Verification ──
     useEffect(() => {
         let isMounted = true

@@ -9,13 +9,15 @@ import Scene from "./scene/Scene";
 import Login from "./components/Login";
 import Admin from "./components/Admin";
 import LeaderboardHub from "./leaderboard/LeaderboardHub";
+import { validateContestParams } from "./config/contestConfig";
 
 // ═══════════════════════════════════════════════════════════════
-//  Helper — redirect to /arena preserving all query params
+//  Helper — redirect to /login preserving all contest query params
 // ═══════════════════════════════════════════════════════════════
-function ToArena() {
+function ToLogin() {
   const location = useLocation();
-  return <Navigate to={`/arena${location.search}`} replace />;
+  const { queryString } = validateContestParams(location.search);
+  return <Navigate to={`/login${queryString}`} replace />;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -31,8 +33,8 @@ export default function App() {
         {/* Arena — 3D contest stage */}
         <Route path="/arena" element={<Scene />} />
 
-        {/* Root → Login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Root → Login with query params */}
+        <Route path="/" element={<ToLogin />} />
 
         {/* Admin Stage Control Panel */}
         <Route path="/admin" element={<Admin />} />
@@ -42,8 +44,8 @@ export default function App() {
         <Route path="/results"     element={<LeaderboardHub />} />
         <Route path="/leaderboard" element={<LeaderboardHub />} />
 
-        {/* Catch-all → Login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Catch-all → Login with query params */}
+        <Route path="*" element={<ToLogin />} />
       </Routes>
     </BrowserRouter>
   );
