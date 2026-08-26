@@ -49,6 +49,8 @@ export default function Admin() {
   });
   const [updatingResultsPhase, setUpdatingResultsPhase] = useState(false);
   const [eliminatedTeams, setEliminatedTeams] = useState([]);
+  const [manualRanks, setManualRanks] = useState({ phase1: {}, phase2: {}, phase3: {} });
+  const [savingManualRanks, setSavingManualRanks] = useState(false);
   const [savingEliminations, setSavingEliminations] = useState(false);
   const [savingConquests, setSavingConquests] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -249,6 +251,7 @@ export default function Admin() {
       if (data.success) {
         if (data.activeResultsPhase) setActiveResultsPhase(data.activeResultsPhase);
         if (Array.isArray(data.eliminatedTeams)) setEliminatedTeams(data.eliminatedTeams);
+        if (data.manualRanks) setManualRanks(data.manualRanks);
         if (data.phase1Conquests && Object.keys(data.phase1Conquests).length > 0) {
           setPhase1Map(prev => ({ ...prev, ...data.phase1Conquests }));
         }
@@ -267,6 +270,49 @@ export default function Admin() {
   useEffect(() => {
     fetchConquests();
   }, [fetchConquests]);
+
+  // Set position / tie rank override for a team in a phase
+  const handleSetTeamManualRank = (phase, teamName, rankValue) => {
+    setManualRanks(prev => ({
+      ...prev,
+      [phase]: {
+        ...(prev[phase] || {}),
+        [teamName]: rankValue
+      }
+    }));
+  };
+
+  // Save manual ranks to backend
+  const handleSaveManualRanks = async () => {
+    setSavingManualRanks(true);
+    setStatusMsg("");
+
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/results/manual-ranks`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ manualRanks }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatusMsg("⚖️ Successfully saved tie-breaker / manual rank positions!");
+        setStatusType("success");
+      } else {
+        setStatusMsg(data.message || "Failed to save tie-breaker positions.");
+        setStatusType("error");
+      }
+    } catch (err) {
+      setStatusMsg("Failed to connect to backend: " + err.message);
+      setStatusType("error");
+    } finally {
+      setSavingManualRanks(false);
+    }
+  };
 
   // Quick Action: Eliminate trailing 5 teams (rank 21-25)
   const handleEliminateTrailing5Teams = () => {
@@ -1274,6 +1320,127 @@ export default function Admin() {
                 })}
               </div>
             </div>
+
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* ⚖️ MANUAL POSITION / TIE-BREAKER CONTROL PANEL             */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div style={{
+              borderTop: "1px solid rgba(255, 196, 81, 0.3)",
+              paddingTop: "24px",
+              marginBottom: "32px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+                <div>
+                  <h3 style={{ fontSize: "15px", color: "#FFC451", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "800", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span>⚖️ Tie-Breaker &amp; Position Assignment</span>
+                  </h3>
+                  <div style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "4px" }}>
+                    If there is a tie in conquered lands, manually assign position/rank priority (e.g. 1 for 1st, 2 for 2nd) to break ties.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveManualRanks}
+                  disabled={savingManualRanks}
+                  style={{
+                    padding: "10px 20px",
+                    borderRadius: "8px",
+                    background: "#FFC451",
+                    color: "#000",
+                    fontWeight: "900",
+                    fontSize: "13px",
+                    border: "none",
+                    cursor: savingManualRanks ? "wait" : "pointer",
+                    boxShadow: "0 0 15px rgba(255, 196, 81, 0.4)"
+                  }}
+                >
+                  {savingManualRanks ? "SAVING..." : "SAVE TIE-BREAKER POSITIONS ⚡"}
+                </button>
+              </div>
+
+              {/* Phase Selector for Tie Breaker */}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                {["phase1", "phase2", "phase3"].map((pKey) => (
+                  <button
+                    key={pKey}
+                    type="button"
+                    onClick={() => setSelectedPhaseForEditing(pKey)}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "6px",
+                      background: selectedPhaseForEditing === pKey ? "#FFC451" : "rgba(17,24,39,0.7)",
+                      color: selectedPhaseForEditing === pKey ? "#000" : "#9CA3AF",
+                      border: "1px solid rgba(255,196,81,0.3)",
+                      fontWeight: "800",
+                      fontSize: "11px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {pKey === "phase3" ? "FINAL WINNERS TIES" : `${pKey.toUpperCase()} TIES`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Teams Position Assignment Grid */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: "10px",
+                background: "rgba(0, 0, 0, 0.3)",
+                padding: "16px",
+                borderRadius: "12px",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                maxHeight: "320px",
+                overflowY: "auto"
+              }}>
+                {phase1Data.map((t) => {
+                  const currentVal = (manualRanks[selectedPhaseForEditing] || {})[t.teamName] ?? "";
+                  return (
+                    <div
+                      key={t.teamName}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        background: "rgba(255, 255, 255, 0.03)",
+                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                        gap: "8px"
+                      }}
+                    >
+                      <div style={{ fontSize: "12px", fontWeight: "700", color: "#E5E7EB", flex: 1 }}>
+                        {t.teamName}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ fontSize: "10px", color: "#9CA3AF" }}>Position:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="25"
+                          placeholder="Auto"
+                          value={currentVal}
+                          onChange={(e) => handleSetTeamManualRank(selectedPhaseForEditing, t.teamName, e.target.value)}
+                          style={{
+                            width: "58px",
+                            padding: "4px 6px",
+                            borderRadius: "4px",
+                            background: "#1F2937",
+                            border: "1px solid rgba(255,196,81,0.4)",
+                            color: "#FFD700",
+                            fontWeight: "800",
+                            fontSize: "12px",
+                            textAlign: "center",
+                            outline: "none"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
 
 
 

@@ -51,6 +51,7 @@ ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS eliminated_teams JSONB
 ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS phase1_lands JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS phase2_lands JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS phase3_lands JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS manual_ranks JSONB DEFAULT '{}'::jsonb;
 
 
 -- 6. Enable Row Level Security (RLS) on contest_state

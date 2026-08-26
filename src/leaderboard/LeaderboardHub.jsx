@@ -215,6 +215,7 @@ export default function LeaderboardHub() {
     const [phase1Conquests, setPhase1Conquests] = useState({})
     const [phase2Conquests, setPhase2Conquests] = useState({})
     const [phase3Conquests, setPhase3Conquests] = useState({})
+    const [manualRanks, setManualRanks] = useState({ phase1: {}, phase2: {}, phase3: {} })
     const [eliminatedTeams, setEliminatedTeams] = useState([])
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < 768 : false
@@ -242,6 +243,7 @@ export default function LeaderboardHub() {
                     if (data.phase1Conquests) setPhase1Conquests(data.phase1Conquests);
                     if (data.phase2Conquests) setPhase2Conquests(data.phase2Conquests);
                     if (data.phase3Conquests) setPhase3Conquests(data.phase3Conquests);
+                    if (data.manualRanks) setManualRanks(data.manualRanks);
                 }
             })
             .catch(() => {})
@@ -255,6 +257,17 @@ export default function LeaderboardHub() {
         return true;
     }
 
+    // Helper to get tie-breaker rank for a team in a phase
+    const getTieRank = (phaseKey, teamName) => {
+        const pRanks = (manualRanks && manualRanks[phaseKey]) || {};
+        const val = pRanks[teamName];
+        if (val !== undefined && val !== null && val !== "") {
+            const num = Number(val);
+            if (!isNaN(num)) return num;
+        }
+        return 999;
+    };
+
     // For Phase 1 / Phase 2 tabs — sorted table view
     const activeEntries = (current.data || []).map(entry => {
         const targetMap = activeTab === "phase1" ? phase1Conquests :
@@ -267,7 +280,18 @@ export default function LeaderboardHub() {
     }).sort((a, b) => {
         if (a.isEliminated && !b.isEliminated) return 1;
         if (!a.isEliminated && b.isEliminated) return -1;
-        return (b.conqueredLands || []).length - (a.conqueredLands || []).length;
+
+        // 1. Sort by land count descending
+        const countDiff = (b.conqueredLands || []).length - (a.conqueredLands || []).length;
+        if (countDiff !== 0) return countDiff;
+
+        // 2. Tie breaker: Manual position assignment
+        const phaseKey = activeTab === "overall" ? "phase3" : activeTab;
+        const aTieRank = getTieRank(phaseKey, a.teamName);
+        const bTieRank = getTieRank(phaseKey, b.teamName);
+        if (aTieRank !== bTieRank) return aTieRank - bTieRank;
+
+        return a.teamName.localeCompare(b.teamName);
     });
 
     // For Final Winners tab — top-5 from phase3 data
@@ -278,7 +302,17 @@ export default function LeaderboardHub() {
     }).sort((a, b) => {
         if (a.isEliminated && !b.isEliminated) return 1;
         if (!a.isEliminated && b.isEliminated) return -1;
-        return (b.conqueredLands || []).length - (a.conqueredLands || []).length;
+
+        // 1. Sort by land count descending
+        const countDiff = (b.conqueredLands || []).length - (a.conqueredLands || []).length;
+        if (countDiff !== 0) return countDiff;
+
+        // 2. Tie breaker: Manual position assignment for phase3 / final
+        const aTieRank = getTieRank("phase3", a.teamName);
+        const bTieRank = getTieRank("phase3", b.teamName);
+        if (aTieRank !== bTieRank) return aTieRank - bTieRank;
+
+        return a.teamName.localeCompare(b.teamName);
     });
 
 

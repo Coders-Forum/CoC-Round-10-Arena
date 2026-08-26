@@ -771,6 +771,7 @@ let memoryTeamConquests = {};           // { [teamName]: string[] } (overall mer
 let memoryPhase1Conquests = {};         // { [teamName]: string[] }
 let memoryPhase2Conquests = {};         // { [teamName]: string[] }
 let memoryPhase3Conquests = {};         // { [teamName]: string[] }
+let memoryManualRanks = { phase1: {}, phase2: {}, phase3: {} }; // { [phase]: { [teamName]: number } }
 let memoryEliminatedTeams = [];         // string[] array of eliminated team names
 let conquestsCacheExpiresAt = 0;
 const CONQUESTS_CACHE_TTL = 30 * 1000; // 30 seconds
@@ -780,7 +781,7 @@ async function loadTeamConquestsFromDB() {
   try {
     const { data: stateData } = await supabase
       .from("contest_state")
-      .select("active_results_phase, eliminated_teams")
+      .select("active_results_phase, eliminated_teams, manual_ranks")
       .eq("id", "current")
       .maybeSingle();
 
@@ -790,6 +791,9 @@ async function loadTeamConquestsFromDB() {
       }
       if (Array.isArray(stateData.eliminated_teams)) {
         memoryEliminatedTeams = stateData.eliminated_teams;
+      }
+      if (stateData.manual_ranks && typeof stateData.manual_ranks === "object") {
+        memoryManualRanks = stateData.manual_ranks;
       }
     }
 
@@ -840,6 +844,7 @@ async function getTeamConquests() {
       phase1Conquests: memoryPhase1Conquests,
       phase2Conquests: memoryPhase2Conquests,
       phase3Conquests: memoryPhase3Conquests,
+      manualRanks: memoryManualRanks,
       eliminatedTeams: memoryEliminatedTeams,
     };
   }
@@ -850,6 +855,7 @@ async function getTeamConquests() {
     phase1Conquests: memoryPhase1Conquests,
     phase2Conquests: memoryPhase2Conquests,
     phase3Conquests: memoryPhase3Conquests,
+    manualRanks: memoryManualRanks,
     eliminatedTeams: memoryEliminatedTeams,
   };
 }
@@ -939,6 +945,7 @@ app.all(["/admin/results/active-phase", "/api/admin/results/active-phase"], requ
               bypass_login: memoryBypassLogin,
               active_results_phase: activeResultsPhase,
               eliminated_teams: memoryEliminatedTeams,
+              manual_ranks: memoryManualRanks,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "id" }
@@ -992,6 +999,7 @@ app.all(["/admin/teams/eliminate", "/api/admin/teams/eliminate"], requireAdmin, 
               bypass_login: memoryBypassLogin,
               active_results_phase: memoryActiveResultsPhase,
               eliminated_teams: sanitized,
+              manual_ranks: memoryManualRanks,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "id" }
@@ -1014,6 +1022,59 @@ app.all(["/admin/teams/eliminate", "/api/admin/teams/eliminate"], requireAdmin, 
   } catch (err) {
     console.error("Failed to update eliminated teams:", err.message);
     return res.status(500).json({ success: false, message: "Internal error updating eliminated teams." });
+  }
+});
+
+// Admin API: Set manual ranks / tie-breaker positions (PATCH & POST)
+app.all(["/admin/results/manual-ranks", "/api/admin/results/manual-ranks"], requireAdmin, async (req, res) => {
+  if (req.method !== "PATCH" && req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
+  }
+
+  try {
+    const { manualRanks } = req.body || {};
+    if (typeof manualRanks !== "object" || manualRanks === null) {
+      return res.status(400).json({ success: false, message: "manualRanks object is required." });
+    }
+
+    memoryManualRanks = manualRanks;
+    conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
+
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from("contest_state")
+          .upsert(
+            {
+              id: "current",
+              active_stage: memoryActiveStage,
+              disabled_lands: memoryDisabledLands,
+              bypass_login: memoryBypassLogin,
+              active_results_phase: memoryActiveResultsPhase,
+              eliminated_teams: memoryEliminatedTeams,
+              manual_ranks: memoryManualRanks,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+        if (error) {
+          console.error("[Supabase Save Manual Ranks Error]:", error.message);
+        }
+      } catch (dbErr) {
+        console.error("[Supabase Save Manual Ranks Exception]:", dbErr.message);
+      }
+    }
+
+    console.log(`[${new Date().toISOString()}] ⚖️ ADMIN UPDATED MANUAL RANKS / TIE-BREAKERS (by ${req.adminUser})`);
+    return res.json({
+      success: true,
+      manualRanks: memoryManualRanks,
+      message: "Manual tie-breaker ranks saved successfully.",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update manual ranks:", err.message);
+    return res.status(500).json({ success: false, message: "Internal error updating manual ranks." });
   }
 });
 
