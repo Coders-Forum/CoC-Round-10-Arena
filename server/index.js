@@ -212,24 +212,35 @@ async function getCachedUser(username) {
   return USERS.get(uname) || null;
 }
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, s] of SESSIONS.entries()) {
-    if (now > s.expiresAt) SESSIONS.delete(token);
-  }
-  for (const [token, s] of ADMIN_SESSIONS.entries()) {
-    if (now > s.expiresAt) ADMIN_SESSIONS.delete(token);
-  }
-  for (const [ip, entry] of FAILED_LOGINS.entries()) {
-    if (entry.lockedUntil && now > entry.lockedUntil) {
-      FAILED_LOGINS.delete(ip);
-    }
-  }
-}, 15 * 60 * 1000);
-
 const FAILED_LOGINS = new Map();
 const MAX_FAILS = 100;          // Allow high tolerance for testing
 const LOCKOUT_MS = 2 * 60 * 1000;
+
+const ADMIN_SESSIONS = new Map();
+const rawAdminUser = process.env.ADMIN_USERNAME || "";
+const rawAdminPass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || "";
+const ADMIN_USERNAME = rawAdminUser ? rawAdminUser.toLowerCase() : "";
+const ADMIN_PASSWORD_HASH = rawAdminPass ? hashPassword(rawAdminPass) : "";
+const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
+
+// Only run cleanup interval in long-running server environments (not Vercel serverless)
+if (!process.env.VERCEL) {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [token, s] of SESSIONS.entries()) {
+      if (now > s.expiresAt) SESSIONS.delete(token);
+    }
+    for (const [token, s] of ADMIN_SESSIONS.entries()) {
+      if (now > s.expiresAt) ADMIN_SESSIONS.delete(token);
+    }
+    for (const [ip, entry] of FAILED_LOGINS.entries()) {
+      if (entry.lockedUntil && now > entry.lockedUntil) {
+        FAILED_LOGINS.delete(ip);
+      }
+    }
+  }, 15 * 60 * 1000);
+}
+
 
 function checkServerLockout(ip) {
   const entry = FAILED_LOGINS.get(ip);
@@ -379,15 +390,9 @@ let memoryActiveStage = "round1";
 let memoryDisabledLands = [];
 let memoryBypassLogin = false;
 
-const ADMIN_SESSIONS = new Map();
-const rawAdminUser = process.env.ADMIN_USERNAME || "";
-const rawAdminPass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || "";
-const ADMIN_USERNAME = rawAdminUser ? rawAdminUser.toLowerCase() : "";
-const ADMIN_PASSWORD_HASH = rawAdminPass ? hashPassword(rawAdminPass) : "";
-const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
-
 let stateCacheExpiresAt = 0;
 const STATE_CACHE_TTL = 30 * 1000; // 30 seconds — admin writes always invalidate immediately
+
 
 async function getContestState() {
   const now = Date.now();
