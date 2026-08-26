@@ -421,24 +421,31 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
 async function saveContestStateToSupabase() {
   if (supabase) {
     try {
+      const fullObj = {
+        id: "current",
+        active_stage: memoryActiveStage,
+        disabled_lands: memoryDisabledLands,
+        bypass_login: memoryBypassLogin,
+        active_results_phase: memoryActiveResultsPhase,
+        eliminated_teams: memoryEliminatedTeams,
+        manual_ranks: memoryManualRanks,
+        updated_at: new Date().toISOString(),
+      };
       const { error } = await supabase
         .from("contest_state")
-        .upsert(
-          {
-            id: "current",
-            active_stage: memoryActiveStage,
-            disabled_lands: memoryDisabledLands,
-            bypass_login: memoryBypassLogin,
-            active_results_phase: memoryActiveResultsPhase,
-            eliminated_teams: memoryEliminatedTeams,
-            manual_ranks: memoryManualRanks,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        );
+        .upsert(fullObj, { onConflict: "id" });
 
       if (error) {
         console.error("[Supabase Save Contest State Error]:", error.message);
+        // Fallback: Retry with basic columns if newer schema columns do not exist in DB yet
+        await supabase
+          .from("contest_state")
+          .upsert({
+            id: "current",
+            active_stage: memoryActiveStage,
+            disabled_lands: memoryDisabledLands,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "id" });
       } else {
         console.log(`⚡ [Supabase State Saved] stage=${memoryActiveStage}, resultsPhase=${memoryActiveResultsPhase}, eliminated=${memoryEliminatedTeams.length}`);
       }
@@ -475,6 +482,21 @@ async function getContestState() {
         }
         if (data.manual_ranks && typeof data.manual_ranks === "object") {
           memoryManualRanks = data.manual_ranks;
+        }
+      } else if (error) {
+        // Fallback: query basic columns if active_results_phase/manual_ranks column missing in DB
+        const { data: baseData } = await supabase
+          .from("contest_state")
+          .select("active_stage, disabled_lands")
+          .eq("id", "current")
+          .maybeSingle();
+        if (baseData) {
+          if (baseData.active_stage && ALLOWED_STAGES.includes(baseData.active_stage)) {
+            memoryActiveStage = baseData.active_stage;
+          }
+          if (Array.isArray(baseData.disabled_lands)) {
+            memoryDisabledLands = baseData.disabled_lands;
+          }
         }
       }
     } catch (err) {
