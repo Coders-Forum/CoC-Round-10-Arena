@@ -4,29 +4,36 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import dotenv from "dotenv";
-import os from "os";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-function getStoreFilePath() {
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY) {
-    return path.join(os.tmpdir(), "contest_store.json");
-  }
-  return path.join(__dirname, "data", "contest_store.json");
-}
-
 
 const app = express();
 
 // Trust reverse proxy (Vercel / Cloudflare / Nginx) for accurate client IP
 app.set("trust proxy", 1);
+
+// ═══════════════════════════════════════════════════════════════
+//  GLOBAL CONTEST STATE & MEMORY CACHES (100% Supabase DB Backed)
+// ═══════════════════════════════════════════════════════════════
+const ALLOWED_STAGES = ["round0", "round1", "round2_phase1", "round2_phase2", "round2_phase3"];
+let memoryActiveStage = "round1";
+let memoryDisabledLands = [];
+let memoryBypassLogin = false;
+let memoryActiveResultsPhase = "phase1"; // "phase1" | "phase2" | "phase3" | "all"
+let memoryTeamConquests = {};           // { [teamName]: string[] } (overall merged)
+let memoryPhase1Conquests = {};         // { [teamName]: string[] }
+let memoryPhase2Conquests = {};         // { [teamName]: string[] }
+let memoryPhase3Conquests = {};         // { [teamName]: string[] }
+let memoryManualRanks = { phase1: {}, phase2: {}, phase3: {} }; // { [phase]: { [teamName]: number } }
+let memoryEliminatedTeams = [];         // string[] array of eliminated team names
+
+let stateCacheExpiresAt = 0;
+const STATE_CACHE_TTL = 30 * 1000; // 30 seconds
+
+let conquestsCacheExpiresAt = 0;
+const CONQUESTS_CACHE_TTL = 30 * 1000; // 30 seconds
+
 
 // ═══════════════════════════════════════════════════════════════
 //  SUPABASE CLIENT INITIALIZATION
@@ -395,71 +402,8 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 //  CONTEST STAGE MANAGEMENT (Admin-Controlled Single Source of Truth)
 // ═══════════════════════════════════════════════════════════════
-const ALLOWED_STAGES = ["round0", "round1", "round2_phase1", "round2_phase2", "round2_phase3"];
-let memoryActiveStage = "round1";
-let memoryDisabledLands = [];
-let memoryBypassLogin = false;
-
-let stateCacheExpiresAt = 0;
-const STATE_CACHE_TTL = 30 * 1000; // 30 seconds — admin writes always invalidate immediately
-
-// Local Disk Backup Persistence Helpers
-function saveStateToDisk() {
-  try {
-    const storePath = getStoreFilePath();
-    const dir = path.dirname(storePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    const fullState = {
-      activeStage: memoryActiveStage,
-      disabledLands: memoryDisabledLands,
-      bypassLogin: memoryBypassLogin,
-      activeResultsPhase: memoryActiveResultsPhase,
-      eliminatedTeams: memoryEliminatedTeams,
-      phase1Conquests: memoryPhase1Conquests,
-      phase2Conquests: memoryPhase2Conquests,
-      phase3Conquests: memoryPhase3Conquests,
-      teamConquests: memoryTeamConquests,
-      manualRanks: memoryManualRanks,
-      updatedAt: new Date().toISOString()
-    };
-    fs.writeFileSync(storePath, JSON.stringify(fullState, null, 2), "utf8");
-  } catch (err) {
-    console.warn("⚠️ [Disk Store Write Warning]:", err.message);
-  }
-}
-
-function loadStateFromDisk() {
-  try {
-    const storePath = getStoreFilePath();
-    if (fs.existsSync(storePath)) {
-      const raw = fs.readFileSync(storePath, "utf8");
-      const data = JSON.parse(raw);
-      if (data) {
-        if (data.activeStage && ALLOWED_STAGES.includes(data.activeStage)) memoryActiveStage = data.activeStage;
-        if (Array.isArray(data.disabledLands)) memoryDisabledLands = data.disabledLands;
-        if (typeof data.bypassLogin === "boolean") memoryBypassLogin = data.bypassLogin;
-        if (data.activeResultsPhase) memoryActiveResultsPhase = data.activeResultsPhase;
-        if (Array.isArray(data.eliminatedTeams)) memoryEliminatedTeams = data.eliminatedTeams;
-        if (data.phase1Conquests) memoryPhase1Conquests = data.phase1Conquests;
-        if (data.phase2Conquests) memoryPhase2Conquests = data.phase2Conquests;
-        if (data.phase3Conquests) memoryPhase3Conquests = data.phase3Conquests;
-        if (data.teamConquests) memoryTeamConquests = data.teamConquests;
-        if (data.manualRanks) memoryManualRanks = data.manualRanks;
-        return true;
-      }
-    }
-  } catch (err) {
-    console.warn("⚠️ [Disk Store Read Warning]:", err.message);
-  }
-  return false;
-}
-
-// Unified Save Helper: Saves ALL fields together to Supabase AND local disk (no field clobbering!)
+// Unified Save Helper: Saves ALL 6 admin fields together to Supabase Cloud DB (no field clobbering!)
 async function saveContestStateToSupabase() {
-  saveStateToDisk();
-
   if (supabase) {
     try {
       const { error } = await supabase
@@ -530,15 +474,10 @@ async function getContestState() {
           memoryManualRanks = data.manual_ranks;
         }
         stateCacheExpiresAt = now + STATE_CACHE_TTL;
-      } else {
-        loadStateFromDisk();
       }
     } catch (err) {
       console.error("[Supabase State Query Error]:", err.message);
-      loadStateFromDisk();
     }
-  } else {
-    loadStateFromDisk();
   }
   return {
     activeStage: memoryActiveStage,
@@ -782,15 +721,7 @@ app.all(["/admin/contest/bypass-login", "/api/admin/contest/bypass-login", "/api
 //  — RAM cache (30s TTL) backed by Supabase teams & contest_state
 //  — Supports Phase 1, Phase 2, and Final Winners activation & locking
 // ═══════════════════════════════════════════════════════════════
-let memoryActiveResultsPhase = "phase1"; // "phase1" | "phase2" | "phase3" | "all"
-let memoryTeamConquests = {};           // { [teamName]: string[] } (overall merged)
-let memoryPhase1Conquests = {};         // { [teamName]: string[] }
-let memoryPhase2Conquests = {};         // { [teamName]: string[] }
-let memoryPhase3Conquests = {};         // { [teamName]: string[] }
-let memoryManualRanks = { phase1: {}, phase2: {}, phase3: {} }; // { [phase]: { [teamName]: number } }
-let memoryEliminatedTeams = [];         // string[] array of eliminated team names
-let conquestsCacheExpiresAt = 0;
-const CONQUESTS_CACHE_TTL = 30 * 1000; // 30 seconds
+
 
 async function loadTeamConquestsFromDB() {
   if (!supabase) return;

@@ -20,6 +20,20 @@ function removeStoredAdminToken() {
   try { localStorage.removeItem("coc_admin_token"); } catch {}
 }
 
+async function safeParseResponse(res) {
+  try {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { success: false, message: text || `Server returned status ${res.status}` };
+    }
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+
 export default function Admin() {
   const [adminToken, setAdminToken] = useState(() => {
     return getStoredAdminToken();
@@ -71,7 +85,7 @@ export default function Admin() {
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/contest/status`, { cache: "no-store" });
-      const data = await res.json();
+      const data = await safeParseResponse(res);
       if (data.success) {
         if (data.activeStage) {
           setActiveStage(data.activeStage);
@@ -122,7 +136,7 @@ export default function Admin() {
         }),
       });
 
-      const data = await res.json();
+      const data = await safeParseResponse(res);
 
       if (res.ok && data.success && data.adminToken) {
         setStoredAdminToken(data.adminToken);
@@ -168,7 +182,7 @@ export default function Admin() {
         body: JSON.stringify({ activeStage: selectedStage }),
       });
 
-      const data = await res.json();
+      const data = await safeParseResponse(res);
 
       if (res.ok && data.success) {
         setActiveStage(data.activeStage);
@@ -211,7 +225,7 @@ export default function Admin() {
         body: JSON.stringify({ bypassLogin: targetState }),
       });
 
-      const data = await res.json();
+      const data = await safeParseResponse(res);
 
       if (res.ok && data.success) {
         setBypassLogin(data.bypassLogin);
@@ -245,7 +259,7 @@ export default function Admin() {
   const fetchConquests = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/results/conquests`, { cache: "no-store" });
-      const data = await res.json();
+      const data = await safeParseResponse(res);
       if (data.success) {
         if (data.activeResultsPhase) setActiveResultsPhase(data.activeResultsPhase);
         if (Array.isArray(data.eliminatedTeams)) setEliminatedTeams(data.eliminatedTeams);
@@ -296,7 +310,7 @@ export default function Admin() {
         body: JSON.stringify({ manualRanks }),
       });
 
-      const data = await res.json();
+      const data = await safeParseResponse(res);
       if (res.ok && data.success) {
         setStatusMsg("⚖️ Successfully saved tie-breaker / manual rank positions!");
         setStatusType("success");
@@ -351,7 +365,7 @@ export default function Admin() {
         body: JSON.stringify({ eliminatedTeams }),
       });
 
-      const data = await res.json();
+      const data = await safeParseResponse(res);
       if (res.ok && data.success) {
         setStatusMsg(`❌ Successfully saved eliminations! (${eliminatedTeams.length} teams eliminated).`);
         setStatusType("success");
@@ -384,7 +398,7 @@ export default function Admin() {
         body: JSON.stringify({ activeResultsPhase: targetPhase }),
       });
 
-      const data = await res.json();
+      const data = await safeParseResponse(res);
       if (res.ok && data.success) {
         setActiveResultsPhase(data.activeResultsPhase);
         const labelMap = {
@@ -443,7 +457,7 @@ export default function Admin() {
         }),
       });
 
-      const data = await res.json();
+      const data = await safeParseResponse(res);
       if (res.ok && data.success) {
         setStatusMsg(`🏆 Saved ${selectedPhaseForEditing.toUpperCase()} conquered lands for team "${selectedTeamForResults}"! (${currentLands.length} lands)`);
         setStatusType("success");
@@ -496,7 +510,7 @@ export default function Admin() {
         body: JSON.stringify({ disabledLands }),
       });
 
-      const data = await res.json();
+      const data = await safeParseResponse(res);
 
       if (res.ok && data.success) {
         setDisabledLands(data.disabledLands || disabledLands);
