@@ -762,6 +762,47 @@ app.all(["/admin/contest/bypass-login", "/api/admin/contest/bypass-login", "/api
 });
 
 // ═══════════════════════════════════════════════════════════════
+//  DYNAMIC TEAM CONQUESTS & RESULTS MANAGEMENT API
+// ═══════════════════════════════════════════════════════════════
+let memoryTeamConquests = {}; // { [teamName]: string[] }
+
+// Public API: Get live team conquered land mappings
+app.get(["/results/conquests", "/api/results/conquests", "/api/teams/conquered-lands"], async (_req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  return res.json({
+    success: true,
+    conquests: memoryTeamConquests,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Admin API: Update team conquered lands
+app.all(["/admin/teams/conquered-lands", "/api/admin/teams/conquered-lands"], requireAdmin, async (req, res) => {
+  if (req.method !== "PATCH" && req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
+  }
+
+  const { teamName, conqueredLands, conquests } = req.body;
+
+  if (conquests && typeof conquests === "object") {
+    memoryTeamConquests = { ...memoryTeamConquests, ...conquests };
+  } else if (teamName && Array.isArray(conqueredLands)) {
+    memoryTeamConquests[teamName] = conqueredLands;
+  } else {
+    return res.status(400).json({ success: false, message: "Provide teamName & conqueredLands array, or conquests object." });
+  }
+
+  console.log(`[${new Date().toISOString()}] 🏆 ADMIN UPDATED TEAM CONQUESTS (by ${req.adminUser})`);
+  return res.json({
+    success: true,
+    conquests: memoryTeamConquests,
+    message: "Team conquered lands updated successfully.",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+
+// ═══════════════════════════════════════════════════════════════
 //  CONTEST ACCESS & ELIGIBILITY VERIFICATION API
 // ═══════════════════════════════════════════════════════════════
 app.all(["/contest/verify-access", "/api/contest/verify-access", "/api/contest/access"], async (req, res) => {

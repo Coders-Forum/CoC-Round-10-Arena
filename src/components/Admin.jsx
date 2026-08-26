@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getLandingPageUrl, CONTEST_CONFIG } from "../config/contestConfig";
+import { phase1Data } from "../leaderboard/leaderboardData";
 
 function getStoredAdminToken() {
   try {
@@ -28,8 +29,18 @@ export default function Admin() {
   const [disabledLands, setDisabledLands] = useState([]);
   const [bypassLogin, setBypassLogin] = useState(false);
   const [togglingBypass, setTogglingBypass] = useState(false);
+  const [selectedTeamForResults, setSelectedTeamForResults] = useState("Phoneix");
+  const [teamConquestsMap, setTeamConquestsMap] = useState(() => {
+    const initial = {};
+    phase1Data.forEach(t => {
+      initial[t.teamName] = t.conqueredLands || [];
+    });
+    return initial;
+  });
+  const [savingConquests, setSavingConquests] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingLands, setSavingLands] = useState(false);
+
   const [landFilter, setLandFilter] = useState("");
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [statusMsg, setStatusMsg] = useState("");
@@ -212,6 +223,70 @@ export default function Admin() {
       setStatusType("error");
     } finally {
       setTogglingBypass(false);
+    }
+  };
+
+  // Fetch live conquests from backend
+  const fetchConquests = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/results/conquests`, { cache: "no-store" });
+      const data = await res.json();
+      if (data.success && data.conquests && Object.keys(data.conquests).length > 0) {
+        setTeamConquestsMap(prev => ({ ...prev, ...data.conquests }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch conquests:", err);
+    }
+  }, [apiUrl]);
+
+  useEffect(() => {
+    fetchConquests();
+  }, [fetchConquests]);
+
+  // Toggle land for selected team in Results Manager
+  const handleToggleTeamLand = (landName) => {
+    setTeamConquestsMap(prev => {
+      const currentLands = prev[selectedTeamForResults] || [];
+      const exists = currentLands.includes(landName);
+      const updated = exists ? currentLands.filter(l => l !== landName) : [...currentLands, landName];
+      return { ...prev, [selectedTeamForResults]: updated };
+    });
+  };
+
+  // Save team conquered lands to backend
+  const handleSaveTeamConquests = async () => {
+    setSavingConquests(true);
+    setStatusMsg("");
+
+    const currentLands = teamConquestsMap[selectedTeamForResults] || [];
+
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/teams/conquered-lands`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({
+          teamName: selectedTeamForResults,
+          conqueredLands: currentLands,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatusMsg(`🏆 Saved conquered lands for team "${selectedTeamForResults}"! (${currentLands.length} lands)`);
+        setStatusType("success");
+      } else {
+        setStatusMsg(data.message || "Failed to save team conquests.");
+        setStatusType("error");
+      }
+    } catch (err) {
+      setStatusMsg("Failed to connect to backend: " + err.message);
+      setStatusType("error");
+    } finally {
+      setSavingConquests(false);
     }
   };
 
@@ -693,6 +768,120 @@ export default function Admin() {
                 </button>
               </div>
             </div>
+
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* 🏆 DYNAMIC RESULTS & TEAM CONQUEST MANAGER                */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div style={{
+              borderTop: "1px solid rgba(255, 196, 81, 0.25)",
+              paddingTop: "24px",
+              marginBottom: "32px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+                <div>
+                  <h3 style={{ fontSize: "15px", color: "#FFC451", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "800", margin: 0 }}>
+                    🏆 Dynamic Results & Team Conquest Manager
+                  </h3>
+                  <div style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "4px" }}>
+                    Select a team and check/uncheck conquered lands to dynamically update the live Results Page (`/results`).
+                  </div>
+                </div>
+                <span style={{ fontSize: "11px", padding: "4px 12px", borderRadius: "100px", background: "rgba(255, 196, 81, 0.15)", border: "1px solid #FFC451", color: "#FFD700", fontWeight: "800" }}>
+                  25 Qualified Teams
+                </span>
+              </div>
+
+              {/* Team Dropdown Selector */}
+              <div style={{ marginBottom: "16px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+                <label style={{ fontSize: "13px", fontWeight: "700", color: "#E5E7EB" }}>
+                  Select Team:
+                </label>
+                <select
+                  value={selectedTeamForResults}
+                  onChange={(e) => setSelectedTeamForResults(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: "220px",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    background: "#1F2937",
+                    border: "1px solid rgba(255, 196, 81, 0.4)",
+                    color: "#FFD700",
+                    fontWeight: "800",
+                    fontSize: "14px",
+                    outline: "none"
+                  }}
+                >
+                  {phase1Data.map(t => (
+                    <option key={t.teamName} value={t.teamName}>
+                      {t.teamName} ({ (teamConquestsMap[t.teamName] || []).length } Lands)
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleSaveTeamConquests}
+                  disabled={savingConquests}
+                  style={{
+                    padding: "10px 20px",
+                    borderRadius: "8px",
+                    background: "#FFC451",
+                    color: "#000",
+                    fontWeight: "900",
+                    fontSize: "13px",
+                    border: "none",
+                    cursor: savingConquests ? "wait" : "pointer",
+                    boxShadow: "0 0 15px rgba(255,196,81,0.4)"
+                  }}
+                >
+                  {savingConquests ? "SAVING..." : "SAVE TEAM CONQUESTS ⚡"}
+                </button>
+              </div>
+
+              {/* 25 Lands Checkbox Grid */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: "10px",
+                background: "rgba(0, 0, 0, 0.3)",
+                padding: "16px",
+                borderRadius: "12px",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                maxHeight: "360px",
+                overflowY: "auto"
+              }}>
+                {round1Lands.map(land => {
+                  const isChecked = (teamConquestsMap[selectedTeamForResults] || []).includes(land.landName);
+                  return (
+                    <label
+                      key={land.landId}
+                      onClick={() => handleToggleTeamLand(land.landName)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        background: isChecked ? "rgba(255, 196, 81, 0.15)" : "rgba(255, 255, 255, 0.03)",
+                        border: `1px solid ${isChecked ? "#FFC451" : "rgba(255, 255, 255, 0.08)"}`,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}} // Handled by parent label onClick
+                        style={{ accentColor: "#FFC451", transform: "scale(1.2)" }}
+                      />
+                      <span style={{ fontSize: "12px", fontWeight: isChecked ? "700" : "500", color: isChecked ? "#FFD700" : "#D1D5DB" }}>
+                        {land.landName}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
 
             {/* ══════════════════════════════════════════════════════════ */}
             {/* ROUND 1: PHASE 1 & 2 CONQUERED / DISABLED LANDS MANAGER   */}

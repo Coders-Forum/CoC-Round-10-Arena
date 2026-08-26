@@ -17,6 +17,7 @@ const TABS = [
 
 export default function LeaderboardHub() {
     const [activeTab, setActiveTab] = useState("phase1")
+    const [liveConquests, setLiveConquests] = useState({})
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < 768 : false
     )
@@ -28,6 +29,29 @@ export default function LeaderboardHub() {
         window.addEventListener("resize", handleResize)
         return () => window.removeEventListener("resize", handleResize)
     }, [])
+
+    useEffect(() => {
+        const apiUrl = import.meta.env.VITE_API_URL !== undefined
+            ? import.meta.env.VITE_API_URL
+            : (import.meta.env.DEV ? "http://localhost:5000" : "");
+
+        fetch(`${apiUrl}/api/results/conquests`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.conquests) {
+                    setLiveConquests(data.conquests)
+                }
+            })
+            .catch(() => {})
+    }, [])
+
+    const activeEntries = (current.data || []).map(entry => {
+        if (liveConquests[entry.teamName]) {
+            return { ...entry, conqueredLands: liveConquests[entry.teamName] }
+        }
+        return entry
+    })
+
 
     const btnStyle = (active) => ({
         display: "inline-flex",
@@ -359,9 +383,10 @@ export default function LeaderboardHub() {
                         <RankedLeaderboard
                             title={current.label}
                             subtitle={current.subtitle}
-                            entries={current.data}
+                            entries={activeEntries}
                             showDivider={activeTab === "round0" || activeTab === "round1"}
                         />
+
                     </>
                 )}
             </main>
