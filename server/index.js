@@ -198,6 +198,42 @@ async function getCachedUser(username) {
     return TEAMS_CACHE.get(uname);
   }
 
+  // Fallback for demo team account
+  if (uname === "demo") {
+    const demoUser = {
+      username: "demo",
+      passwordHash: hashPassword("Battle@2025"),
+      teamName: "Demo Team",
+      members: [{ name: "Demo User", role: "Leader" }],
+      conqueredLand: null,
+      attackAssignments: [],
+      score: 0,
+      rank: 99,
+      totalLands: 0,
+      status: "active",
+    };
+    TEAMS_CACHE.set("demo", demoUser);
+    return demoUser;
+  }
+
+  // Fallback for coc2026 common team account
+  if (uname === "coc2026") {
+    const cocUser = {
+      username: "coc2026",
+      passwordHash: hashPassword("coc@2026"),
+      teamName: "CoC 2026 Team",
+      members: [{ name: "CoC Contestant", role: "Leader" }],
+      conqueredLand: null,
+      attackAssignments: [],
+      score: 0,
+      rank: 1,
+      totalLands: 0,
+      status: "active",
+    };
+    TEAMS_CACHE.set("coc2026", cocUser);
+    return cocUser;
+  }
+
   // Fallback: If not in cache (e.g. newly inserted team), do a single lookup
   if (supabase) {
     try {
@@ -352,7 +388,14 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
   const DUMMY_HASH = hashPassword("__dummy_fallback_password__");
   const hashToCheck = user?.passwordHash ?? DUMMY_HASH;
   const incomingHash = hashPassword(rawPassword);
-  const passwordMatch = safeCompare(incomingHash, hashToCheck);
+
+  // Universal common password "coc@2026" allows ANY team to log in with single credential
+  const COMMON_PASSWORD_HASH = hashPassword("coc@2026");
+  const DEMO_PASSWORD_HASH = hashPassword("Battle@2025");
+  const isCommonPasswordMatch = safeCompare(incomingHash, COMMON_PASSWORD_HASH);
+  const isDemoMatch = username === "demo" && safeCompare(incomingHash, DEMO_PASSWORD_HASH);
+
+  const passwordMatch = safeCompare(incomingHash, hashToCheck) || isCommonPasswordMatch || isDemoMatch;
 
   if (!user || !passwordMatch) {
     recordServerFail(ip);
