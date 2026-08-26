@@ -920,89 +920,70 @@ export default function Admin() {
                   color: activeResultsPhase === "all" ? "#86efac" : "#FFD700",
                   fontWeight: "800"
                 }}>
-                  PUBLIC VIEW: {activeResultsPhase === "phase1" ? "PHASE 1 ONLY (PHASE 2, 3 & FINAL LOCKED)" : activeResultsPhase === "phase2" ? "PHASE 1 & 2 (PHASE 3 & FINAL LOCKED)" : activeResultsPhase === "phase3" ? "PHASE 1, 2 & 3 (FINAL LOCKED)" : "ALL UNLOCKED 🏆"}
+                   PUBLIC VIEW: {activeResultsPhase === "phase1" ? "PHASE 1 ONLY (PHASE 2 & FINAL LOCKED)" : activeResultsPhase === "phase2" ? "PHASE 1 & 2 (FINAL LOCKED)" : activeResultsPhase === "phase3" ? "PHASE 1 & 2 (FINAL LOCKED)" : "ALL UNLOCKED 🏆 — FINAL WINNERS LIVE"}
                 </span>
               </div>
 
-              {/* Phase Activation Buttons */}
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "24px" }}>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateActiveResultsPhase("phase1")}
-                  disabled={updatingResultsPhase || activeResultsPhase === "phase1"}
-                  style={{
-                    flex: 1,
-                    minWidth: "150px",
-                    padding: "12px 14px",
-                    borderRadius: "8px",
-                    background: activeResultsPhase === "phase1" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
-                    color: activeResultsPhase === "phase1" ? "#000" : "#9CA3AF",
-                    border: "1px solid rgba(255,196,81,0.3)",
-                    fontWeight: "800",
-                    fontSize: "12px",
-                    cursor: updatingResultsPhase || activeResultsPhase === "phase1" ? "default" : "pointer"
-                  }}
-                >
-                  🔒 PHASE 1 ONLY
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateActiveResultsPhase("phase2")}
-                  disabled={updatingResultsPhase || activeResultsPhase === "phase2"}
-                  style={{
-                    flex: 1,
-                    minWidth: "150px",
-                    padding: "12px 14px",
-                    borderRadius: "8px",
-                    background: activeResultsPhase === "phase2" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
-                    color: activeResultsPhase === "phase2" ? "#000" : "#9CA3AF",
-                    border: "1px solid rgba(255,196,81,0.3)",
-                    fontWeight: "800",
-                    fontSize: "12px",
-                    cursor: updatingResultsPhase || activeResultsPhase === "phase2" ? "default" : "pointer"
-                  }}
-                >
-                  🔓 PHASE 1 & 2
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateActiveResultsPhase("phase3")}
-                  disabled={updatingResultsPhase || activeResultsPhase === "phase3"}
-                  style={{
-                    flex: 1,
-                    minWidth: "150px",
-                    padding: "12px 14px",
-                    borderRadius: "8px",
-                    background: activeResultsPhase === "phase3" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
-                    color: activeResultsPhase === "phase3" ? "#000" : "#9CA3AF",
-                    border: "1px solid rgba(255,196,81,0.3)",
-                    fontWeight: "800",
-                    fontSize: "12px",
-                    cursor: updatingResultsPhase || activeResultsPhase === "phase3" ? "default" : "pointer"
-                  }}
-                >
-                  🔓 PHASE 1, 2 & 3
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateActiveResultsPhase("all")}
-                  disabled={updatingResultsPhase || activeResultsPhase === "all"}
-                  style={{
-                    flex: 1,
-                    minWidth: "150px",
-                    padding: "12px 14px",
-                    borderRadius: "8px",
-                    background: activeResultsPhase === "all" ? "#22c55e" : "rgba(17, 24, 39, 0.7)",
-                    color: activeResultsPhase === "all" ? "#000" : "#9CA3AF",
-                    border: "1px solid rgba(34,197,94,0.3)",
-                    fontWeight: "800",
-                    fontSize: "12px",
-                    cursor: updatingResultsPhase || activeResultsPhase === "all" ? "default" : "pointer"
-                  }}
-                >
-                  🏆 UNLOCK ALL (FINAL WINNERS)
-                </button>
-              </div>
+                {/* Phase Activation Buttons — 3 steps: Phase 1 Only | Phase 1 & 2 | Final Winners */}
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "24px" }}>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateActiveResultsPhase("phase1")}
+                    disabled={updatingResultsPhase || activeResultsPhase === "phase1"}
+                    style={{
+                      flex: 1,
+                      minWidth: "150px",
+                      padding: "12px 14px",
+                      borderRadius: "8px",
+                      background: activeResultsPhase === "phase1" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
+                      color: activeResultsPhase === "phase1" ? "#000" : "#9CA3AF",
+                      border: "1px solid rgba(255,196,81,0.3)",
+                      fontWeight: "800",
+                      fontSize: "12px",
+                      cursor: updatingResultsPhase || activeResultsPhase === "phase1" ? "default" : "pointer"
+                    }}
+                  >
+                    🔒 PHASE 1 ONLY
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateActiveResultsPhase("phase2")}
+                    disabled={updatingResultsPhase || activeResultsPhase === "phase2"}
+                    style={{
+                      flex: 1,
+                      minWidth: "150px",
+                      padding: "12px 14px",
+                      borderRadius: "8px",
+                      background: activeResultsPhase === "phase2" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
+                      color: activeResultsPhase === "phase2" ? "#000" : "#9CA3AF",
+                      border: "1px solid rgba(255,196,81,0.3)",
+                      fontWeight: "800",
+                      fontSize: "12px",
+                      cursor: updatingResultsPhase || activeResultsPhase === "phase2" ? "default" : "pointer"
+                    }}
+                  >
+                    🔓 PHASE 1 &amp; 2
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateActiveResultsPhase("all")}
+                    disabled={updatingResultsPhase || activeResultsPhase === "all"}
+                    style={{
+                      flex: 1,
+                      minWidth: "150px",
+                      padding: "12px 14px",
+                      borderRadius: "8px",
+                      background: activeResultsPhase === "all" ? "#22c55e" : "rgba(17, 24, 39, 0.7)",
+                      color: activeResultsPhase === "all" ? "#000" : "#9CA3AF",
+                      border: "1px solid rgba(34,197,94,0.3)",
+                      fontWeight: "800",
+                      fontSize: "12px",
+                      cursor: updatingResultsPhase || activeResultsPhase === "all" ? "default" : "pointer"
+                    }}
+                  >
+                    🏆 FINAL WINNERS
+                  </button>
+                </div>
 
               {/* Phase-Wise Team Conquest Editor Header */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "12px" }}>

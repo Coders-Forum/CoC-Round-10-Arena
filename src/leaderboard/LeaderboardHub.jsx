@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import RankedLeaderboard from "./RankedLeaderboard.jsx"
-import { round0Data, round1Data, phase1Data, phase2Data, phase3Data, overallData } from "./leaderboardData.js"
+import { phase1Data, phase2Data, phase3Data } from "./leaderboardData.js"
 import { getLandingPageUrl } from "../config/contestConfig.js"
 
 const FONT = "'Clash', 'Clash Display', sans-serif"
@@ -9,17 +9,209 @@ const FONT = "'Clash', 'Clash Display', sans-serif"
 // Set to true to temporarily suspend results until Round 2
 const RESULTS_SUSPENDED = false
 
+// PODIUM_RANKS: visual order for the top-5 podium (2nd left, 1st center, 3rd right, then 4th/5th below)
+const PODIUM_RANKS = [2, 1, 3]
+const PODIUM_HEIGHTS = { 1: 200, 2: 160, 3: 130 }
+const PODIUM_COLORS = {
+    1: { bg: "linear-gradient(180deg,#FFD700,#F59E0B)", glow: "rgba(255,215,0,0.5)", label: "#000", badge: "🏆" },
+    2: { bg: "linear-gradient(180deg,#C0C0C0,#9CA3AF)", glow: "rgba(192,192,192,0.4)", label: "#000", badge: "🥈" },
+    3: { bg: "linear-gradient(180deg,#CD7F32,#92400E)", glow: "rgba(205,127,50,0.4)", label: "#FFF", badge: "🥉" },
+}
+
 const TABS = [
     { key: "phase1", label: "Phase 1", data: phase1Data, subtitle: "Round 2 · Phase 1 Standings" },
     { key: "phase2", label: "Phase 2", data: phase2Data, subtitle: "Round 2 · Phase 2 Standings" },
-    { key: "phase3", label: "Phase 3", data: phase3Data, subtitle: "Round 2 · Phase 3 Standings" },
-    { key: "overall", label: "Final Winners", icon: "🏆", data: overallData, subtitle: "Round 2 · Grand Champions — Top 5 Finalists" }
+    { key: "overall", label: "Final Winners", icon: "🏆", data: phase3Data, subtitle: "Round 2 · Grand Champions" },
 ]
+
+function FinalWinnersPodium({ entries }) {
+    const active = entries.filter(e => !e.isEliminated).slice(0, 5)
+    if (active.length === 0) return (
+        <div style={{ textAlign: "center", color: "#9CA3AF", padding: "60px 20px", fontFamily: FONT, fontSize: "14px" }}>
+            No finalists declared yet.
+        </div>
+    )
+
+    const top3 = PODIUM_RANKS.map(r => active[r - 1]).filter(Boolean)
+    const rest = active.slice(3)
+
+    return (
+        <div style={{ width: "100%", maxWidth: "700px", margin: "0 auto", fontFamily: FONT }}>
+            {/* Title */}
+            <div style={{ textAlign: "center", marginBottom: "8px" }}>
+                <div style={{ color: "#FFC451", fontSize: "11px", fontWeight: "800", letterSpacing: "3px", textTransform: "uppercase", marginBottom: "6px" }}>
+                    Round 2 · Grand Champions
+                </div>
+                <h2 style={{ color: "#FFF", fontSize: "28px", fontWeight: "800", margin: "0 0 4px", textShadow: "0 0 30px rgba(255,196,81,0.4)" }}>
+                    🏆 Final Winners
+                </h2>
+                <p style={{ color: "#9CA3AF", fontSize: "13px", margin: 0 }}>Top 5 qualifiers from the Clash of Coders</p>
+            </div>
+
+            {/* Podium — top 3 */}
+            <div style={{
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "center",
+                gap: "12px",
+                margin: "40px auto 32px",
+                padding: "0 8px",
+            }}>
+                {top3.map((team, idx) => {
+                    const podiumRank = PODIUM_RANKS[idx]
+                    const actualRank = active.indexOf(team) + 1
+                    const cfg = PODIUM_COLORS[podiumRank] || PODIUM_COLORS[3]
+                    const podiumH = PODIUM_HEIGHTS[podiumRank] || 100
+                    const isFirst = podiumRank === 1
+                    return (
+                        <div key={team.teamName} style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            flex: isFirst ? "0 0 200px" : "0 0 160px",
+                        }}>
+                            {/* Team card above podium */}
+                            <div style={{
+                                width: "100%",
+                                padding: "14px 10px",
+                                borderRadius: "16px",
+                                background: isFirst
+                                    ? "linear-gradient(135deg,rgba(255,215,0,0.25),rgba(245,158,11,0.1),rgba(17,24,39,0.9))"
+                                    : "rgba(17,24,39,0.8)",
+                                border: `1px solid ${isFirst ? "rgba(255,215,0,0.6)" : "rgba(255,196,81,0.2)"}`,
+                                boxShadow: `0 0 ${isFirst ? 30 : 15}px ${cfg.glow}`,
+                                textAlign: "center",
+                                marginBottom: "8px",
+                                backdropFilter: "blur(10px)",
+                                animation: isFirst ? "pulse-glow 2.5s ease-in-out infinite" : "none",
+                            }}>
+                                <div style={{ fontSize: isFirst ? "32px" : "24px", marginBottom: "6px" }}>{cfg.badge}</div>
+                                <div style={{
+                                    color: isFirst ? "#FFD700" : "#E5E7EB",
+                                    fontWeight: "800",
+                                    fontSize: isFirst ? "15px" : "13px",
+                                    letterSpacing: "0.5px",
+                                    marginBottom: "4px",
+                                    lineHeight: "1.3"
+                                }}>{team.teamName}</div>
+                                <div style={{ color: "#9CA3AF", fontSize: "11px", marginBottom: "6px" }}>
+                                    {team.leader} · {team.dept}
+                                </div>
+                                {(team.conqueredLands || []).length > 0 && (
+                                    <div style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        background: "rgba(255,196,81,0.15)",
+                                        border: "1px solid rgba(255,196,81,0.35)",
+                                        borderRadius: "20px",
+                                        padding: "3px 10px",
+                                        color: "#FFC451",
+                                        fontSize: "10px",
+                                        fontWeight: "700"
+                                    }}>
+                                        👑 {(team.conqueredLands || []).join(", ")}
+                                    </div>
+                                )}
+                            </div>
+                            {/* Podium block */}
+                            <div style={{
+                                width: "100%",
+                                height: `${podiumH}px`,
+                                background: cfg.bg,
+                                borderRadius: "10px 10px 0 0",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: `0 -6px 20px ${cfg.glow}`,
+                                flexDirection: "column",
+                                gap: "4px",
+                            }}>
+                                <div style={{ fontSize: "28px", fontWeight: "900", color: cfg.label }}>{podiumRank}</div>
+                                <div style={{ fontSize: "10px", fontWeight: "800", color: cfg.label, letterSpacing: "1px", opacity: 0.8 }}>
+                                    {podiumRank === 1 ? "CHAMPION" : podiumRank === 2 ? "RUNNER-UP" : "3RD PLACE"}
+                                </div>
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* 4th and 5th place cards */}
+            {rest.length > 0 && (
+                <div style={{ marginTop: "8px" }}>
+                    <div style={{
+                        textAlign: "center",
+                        color: "#6B7280",
+                        fontSize: "10px",
+                        fontWeight: "800",
+                        letterSpacing: "2px",
+                        textTransform: "uppercase",
+                        marginBottom: "12px"
+                    }}>4th & 5th Place Finalists</div>
+                    <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                        {rest.map((team, idx) => {
+                            const rank = idx + 4
+                            return (
+                                <div key={team.teamName} style={{
+                                    flex: "0 0 calc(50% - 6px)",
+                                    minWidth: "220px",
+                                    maxWidth: "320px",
+                                    padding: "16px",
+                                    borderRadius: "14px",
+                                    background: "rgba(17,24,39,0.8)",
+                                    border: "1px solid rgba(255,196,81,0.18)",
+                                    backdropFilter: "blur(10px)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "12px",
+                                }}>
+                                    <div style={{
+                                        width: "44px",
+                                        height: "44px",
+                                        borderRadius: "50%",
+                                        background: "rgba(255,196,81,0.1)",
+                                        border: "1px solid rgba(255,196,81,0.3)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "18px",
+                                        fontWeight: "900",
+                                        color: "#FFC451",
+                                        flexShrink: 0
+                                    }}>
+                                        {rank === 4 ? "4" : "5"}
+                                    </div>
+                                    <div>
+                                        <div style={{ color: "#E5E7EB", fontWeight: "800", fontSize: "13px", marginBottom: "2px" }}>{team.teamName}</div>
+                                        <div style={{ color: "#9CA3AF", fontSize: "11px" }}>{team.leader} · {team.dept}</div>
+                                        {(team.conqueredLands || []).length > 0 && (
+                                            <div style={{ color: "#FFC451", fontSize: "10px", marginTop: "4px" }}>
+                                                ⭐ {(team.conqueredLands || []).join(", ")}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* CSS animation for champion card pulse */}
+            <style>{`
+                @keyframes pulse-glow {
+                    0%, 100% { box-shadow: 0 0 30px rgba(255,215,0,0.5); }
+                    50% { box-shadow: 0 0 50px rgba(255,215,0,0.8), 0 0 80px rgba(255,196,81,0.3); }
+                }
+            `}</style>
+        </div>
+    )
+}
 
 export default function LeaderboardHub() {
     const [activeTab, setActiveTab] = useState("phase1")
     const [activeResultsPhase, setActiveResultsPhase] = useState("phase1")
-    const [overallConquests, setOverallConquests] = useState({})
     const [phase1Conquests, setPhase1Conquests] = useState({})
     const [phase2Conquests, setPhase2Conquests] = useState({})
     const [phase3Conquests, setPhase3Conquests] = useState({})
@@ -47,7 +239,6 @@ export default function LeaderboardHub() {
                 if (data.success) {
                     if (data.activeResultsPhase) setActiveResultsPhase(data.activeResultsPhase);
                     if (Array.isArray(data.eliminatedTeams)) setEliminatedTeams(data.eliminatedTeams);
-                    if (data.conquests) setOverallConquests(data.conquests);
                     if (data.phase1Conquests) setPhase1Conquests(data.phase1Conquests);
                     if (data.phase2Conquests) setPhase2Conquests(data.phase2Conquests);
                     if (data.phase3Conquests) setPhase3Conquests(data.phase3Conquests);
@@ -56,31 +247,41 @@ export default function LeaderboardHub() {
             .catch(() => {})
     }, [])
 
+    // "all" OR "phase3" unlocks Final Winners (phase3 = final)
     const isTabUnlocked = (tabKey) => {
         if (tabKey === "phase1") return true;
         if (tabKey === "phase2") return ["phase2", "phase3", "all"].includes(activeResultsPhase);
-        if (tabKey === "phase3") return ["phase3", "all"].includes(activeResultsPhase);
-        if (tabKey === "overall") return activeResultsPhase === "all";
+        if (tabKey === "overall") return ["phase3", "all"].includes(activeResultsPhase);
         return true;
     }
 
+    // For Phase 1 / Phase 2 tabs — sorted table view
     const activeEntries = (current.data || []).map(entry => {
         const targetMap = activeTab === "phase1" ? phase1Conquests :
-                          activeTab === "phase2" ? phase2Conquests :
-                          activeTab === "phase3" ? phase3Conquests : overallConquests;
+                          activeTab === "phase2" ? phase2Conquests : phase3Conquests;
         const isEliminated = eliminatedTeams.includes(entry.teamName);
-        const conqueredLands = targetMap && targetMap[entry.teamName] ? targetMap[entry.teamName] : (entry.conqueredLands || []);
+        const conqueredLands = targetMap && targetMap[entry.teamName]
+            ? targetMap[entry.teamName]
+            : (entry.conqueredLands || []);
         return { ...entry, conqueredLands, isEliminated };
     }).sort((a, b) => {
-        // PUSH ELIMINATED TEAMS TO THE BOTTOM OF THE LIST!
         if (a.isEliminated && !b.isEliminated) return 1;
         if (!a.isEliminated && b.isEliminated) return -1;
-
-        // Sort active teams by total conquered lands descending
-        const aCount = (a.conqueredLands || []).length;
-        const bCount = (b.conqueredLands || []).length;
-        return bCount - aCount;
+        return (b.conqueredLands || []).length - (a.conqueredLands || []).length;
     });
+
+    // For Final Winners tab — top-5 from phase3 data
+    const finalWinnersEntries = phase3Data.map(entry => {
+        const isEliminated = eliminatedTeams.includes(entry.teamName);
+        const conqueredLands = phase3Conquests[entry.teamName] || entry.conqueredLands || [];
+        return { ...entry, conqueredLands, isEliminated };
+    }).sort((a, b) => {
+        if (a.isEliminated && !b.isEliminated) return 1;
+        if (!a.isEliminated && b.isEliminated) return -1;
+        return (b.conqueredLands || []).length - (a.conqueredLands || []).length;
+    });
+
+
 
 
 
@@ -420,13 +621,15 @@ export default function LeaderboardHub() {
 
                         {/* Active Tab Content: Leaderboard Table or Locked Banner */}
                         {isTabUnlocked(activeTab) ? (
-                            <RankedLeaderboard
-                                title={current.label}
-                                subtitle={current.subtitle}
-                                entries={activeEntries}
-                                showDivider={activeTab === "round0" || activeTab === "round1"}
-                                showTop5Divider={activeTab === "overall"}
-                            />
+                            activeTab === "overall" ? (
+                                <FinalWinnersPodium entries={finalWinnersEntries} />
+                            ) : (
+                                <RankedLeaderboard
+                                    title={current.label}
+                                    subtitle={current.subtitle}
+                                    entries={activeEntries}
+                                />
+                            )
                         ) : (
                             <div style={{
                                 display: "flex",
