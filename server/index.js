@@ -903,28 +903,50 @@ app.all(["/admin/results/active-phase", "/api/admin/results/active-phase"], requ
     return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
   }
 
-  const { activeResultsPhase } = req.body;
-  if (!["phase1", "phase2", "all"].includes(activeResultsPhase)) {
-    return res.status(400).json({ success: false, message: "Invalid activeResultsPhase. Must be 'phase1', 'phase2', or 'all'." });
+  try {
+    const { activeResultsPhase } = req.body || {};
+    if (!["phase1", "phase2", "all"].includes(activeResultsPhase)) {
+      return res.status(400).json({ success: false, message: "Invalid activeResultsPhase. Must be 'phase1', 'phase2', or 'all'." });
+    }
+
+    memoryActiveResultsPhase = activeResultsPhase;
+    conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
+
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from("contest_state")
+          .upsert(
+            {
+              id: "current",
+              active_stage: memoryActiveStage,
+              disabled_lands: memoryDisabledLands,
+              bypass_login: memoryBypassLogin,
+              active_results_phase: activeResultsPhase,
+              eliminated_teams: memoryEliminatedTeams,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+        if (error) {
+          console.error("[Supabase Save Active Results Phase Error]:", error.message);
+        }
+      } catch (dbErr) {
+        console.error("[Supabase Save Active Results Phase Exception]:", dbErr.message);
+      }
+    }
+
+    console.log(`[${new Date().toISOString()}] 🏆 ADMIN SET ACTIVE RESULTS PHASE TO: "${activeResultsPhase}" (by ${req.adminUser})`);
+    return res.json({
+      success: true,
+      activeResultsPhase: memoryActiveResultsPhase,
+      message: `Active results phase updated to "${activeResultsPhase}".`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update active results phase:", err.message);
+    return res.status(500).json({ success: false, message: "Internal error updating results phase." });
   }
-
-  memoryActiveResultsPhase = activeResultsPhase;
-  conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
-
-  if (supabase) {
-    await supabase
-      .from("contest_state")
-      .upsert({ id: "current", active_stage: memoryActiveStage, disabled_lands: memoryDisabledLands, bypass_login: memoryBypassLogin, active_results_phase: activeResultsPhase, eliminated_teams: memoryEliminatedTeams, updated_at: new Date().toISOString() }, { onConflict: "id" })
-      .catch((err) => console.error("[Supabase Save Active Results Phase Error]:", err.message));
-  }
-
-  console.log(`[${new Date().toISOString()}] 🏆 ADMIN SET ACTIVE RESULTS PHASE TO: "${activeResultsPhase}" (by ${req.adminUser})`);
-  return res.json({
-    success: true,
-    activeResultsPhase: memoryActiveResultsPhase,
-    message: `Active results phase updated to "${activeResultsPhase}".`,
-    timestamp: new Date().toISOString(),
-  });
 });
 
 // Admin API: Set eliminated teams (PATCH & POST)
@@ -933,30 +955,53 @@ app.all(["/admin/teams/eliminate", "/api/admin/teams/eliminate"], requireAdmin, 
     return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
   }
 
-  const { eliminatedTeams } = req.body;
-  if (!Array.isArray(eliminatedTeams)) {
-    return res.status(400).json({ success: false, message: "eliminatedTeams array is required." });
+  try {
+    const { eliminatedTeams } = req.body || {};
+    if (!Array.isArray(eliminatedTeams)) {
+      return res.status(400).json({ success: false, message: "eliminatedTeams array is required." });
+    }
+
+    const sanitized = eliminatedTeams.map((t) => String(t).trim()).filter(Boolean);
+    memoryEliminatedTeams = sanitized;
+    conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
+
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from("contest_state")
+          .upsert(
+            {
+              id: "current",
+              active_stage: memoryActiveStage,
+              disabled_lands: memoryDisabledLands,
+              bypass_login: memoryBypassLogin,
+              active_results_phase: memoryActiveResultsPhase,
+              eliminated_teams: sanitized,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+        if (error) {
+          console.error("[Supabase Save Eliminated Teams Error]:", error.message);
+        }
+      } catch (dbErr) {
+        console.error("[Supabase Save Eliminated Teams Exception]:", dbErr.message);
+      }
+    }
+
+    console.log(`[${new Date().toISOString()}] ❌ ADMIN UPDATED ELIMINATED TEAMS: [${sanitized.join(", ")}] (by ${req.adminUser})`);
+    return res.json({
+      success: true,
+      eliminatedTeams: memoryEliminatedTeams,
+      message: `Eliminated teams updated (${memoryEliminatedTeams.length} teams eliminated).`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update eliminated teams:", err.message);
+    return res.status(500).json({ success: false, message: "Internal error updating eliminated teams." });
   }
-
-  const sanitized = eliminatedTeams.map((t) => String(t).trim()).filter(Boolean);
-  memoryEliminatedTeams = sanitized;
-  conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
-
-  if (supabase) {
-    await supabase
-      .from("contest_state")
-      .upsert({ id: "current", active_stage: memoryActiveStage, disabled_lands: memoryDisabledLands, bypass_login: memoryBypassLogin, active_results_phase: memoryActiveResultsPhase, eliminated_teams: sanitized, updated_at: new Date().toISOString() }, { onConflict: "id" })
-      .catch((err) => console.error("[Supabase Save Eliminated Teams Error]:", err.message));
-  }
-
-  console.log(`[${new Date().toISOString()}] ❌ ADMIN UPDATED ELIMINATED TEAMS: [${sanitized.join(", ")}] (by ${req.adminUser})`);
-  return res.json({
-    success: true,
-    eliminatedTeams: memoryEliminatedTeams,
-    message: `Eliminated teams updated (${memoryEliminatedTeams.length} teams eliminated).`,
-    timestamp: new Date().toISOString(),
-  });
 });
+
 
 
 // Admin API: Update team conquered lands for a specific phase
