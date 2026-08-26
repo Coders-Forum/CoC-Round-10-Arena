@@ -376,13 +376,28 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
   const token = generateToken();
   const safeUserData = { ...user };
   delete safeUserData.passwordHash;
+  const sessionExpiresAt = Date.now() + SESSION_TTL;
 
   SESSIONS.set(token, {
     username: user.username,
     teamName: user.teamName,
     userData: safeUserData,
-    expiresAt: Date.now() + SESSION_TTL,
+    expiresAt: sessionExpiresAt,
   });
+
+  if (supabase) {
+    try {
+      await supabase.from("team_sessions").upsert({
+        token,
+        username: user.username,
+        team_name: user.teamName,
+        user_data: safeUserData,
+        expires_at: new Date(sessionExpiresAt).toISOString(),
+      }, { onConflict: "token" });
+    } catch (e) {
+      console.error("[Supabase Team Session Save Error]:", e.message);
+    }
+  }
 
   console.log(`[${new Date().toISOString()}] LOGIN OK: ${user.teamName}`);
 
@@ -434,18 +449,6 @@ async function saveContestStateToSupabase() {
 }
 
 async function getContestState() {
-  const now = Date.now();
-  if (now < stateCacheExpiresAt) {
-    return {
-      activeStage: memoryActiveStage,
-      disabledLands: memoryDisabledLands,
-      bypassLogin: memoryBypassLogin,
-      activeResultsPhase: memoryActiveResultsPhase,
-      eliminatedTeams: memoryEliminatedTeams,
-      manualRanks: memoryManualRanks,
-    };
-  }
-
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -473,7 +476,6 @@ async function getContestState() {
         if (data.manual_ranks && typeof data.manual_ranks === "object") {
           memoryManualRanks = data.manual_ranks;
         }
-        stateCacheExpiresAt = now + STATE_CACHE_TTL;
       }
     } catch (err) {
       console.error("[Supabase State Query Error]:", err.message);
@@ -499,7 +501,6 @@ async function setActiveContestStage(newStage) {
     throw new Error(`Invalid stage: ${newStage}`);
   }
   memoryActiveStage = newStage;
-  stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
   await saveContestStateToSupabase();
   return memoryActiveStage;
 }
@@ -510,7 +511,6 @@ async function setDisabledLands(lands) {
   }
   const sanitized = lands.map((item) => String(item).toLowerCase().trim()).filter(Boolean);
   memoryDisabledLands = sanitized;
-  stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
   await saveContestStateToSupabase();
   return memoryDisabledLands;
 }
@@ -518,12 +518,11 @@ async function setDisabledLands(lands) {
 async function setBypassLogin(bypass) {
   const isBypassed = Boolean(bypass);
   memoryBypassLogin = isBypassed;
-  stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
   await saveContestStateToSupabase();
   return memoryBypassLogin;
 }
 
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   const token =
     req.headers["x-admin-token"] ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
@@ -532,7 +531,30 @@ function requireAdmin(req, res, next) {
     return res.status(401).json({ success: false, message: "Admin authorization required." });
   }
 
-  const session = ADMIN_SESSIONS.get(token);
+  let session = ADMIN_SESSIONS.get(token);
+
+  // Fallback to Supabase DB if not in RAM (e.g. cold start / hard refresh)
+  if ((!session || Date.now() > session.expiresAt) && supabase) {
+    try {
+      const { data } = await supabase
+        .from("admin_sessions")
+        .select("username, role, expires_at")
+        .eq("token", token)
+        .maybeSingle();
+
+      if (data && new Date(data.expires_at).getTime() > Date.now()) {
+        session = {
+          username: data.username,
+          role: data.role || "admin",
+          expiresAt: new Date(data.expires_at).getTime(),
+        };
+        ADMIN_SESSIONS.set(token, session);
+      }
+    } catch (dbErr) {
+      console.error("[DB Admin Session Check Error]:", dbErr.message);
+    }
+  }
+
   if (!session || Date.now() > session.expiresAt) {
     if (session) ADMIN_SESSIONS.delete(token);
     return res.status(401).json({ success: false, message: "Admin session expired or invalid." });
@@ -598,11 +620,27 @@ app.post(["/admin/login", "/api/admin/login"], adminLoginLimiter, async (req, re
   clearServerFails(ip);
 
   const token = generateToken();
-  ADMIN_SESSIONS.set(token, {
+  const expiresAt = Date.now() + ADMIN_SESSION_TTL;
+  const adminSessionData = {
     username,
     role: "admin",
-    expiresAt: Date.now() + ADMIN_SESSION_TTL,
-  });
+    expiresAt,
+  };
+  ADMIN_SESSIONS.set(token, adminSessionData);
+
+  if (supabase) {
+    try {
+      await supabase.from("admin_sessions").upsert({
+        token,
+        username,
+        role: "admin",
+        expires_at: new Date(expiresAt).toISOString(),
+      }, { onConflict: "token" });
+      console.log(`⚡ [Supabase Admin Session Persisted] User "${username}" session stored in DB.`);
+    } catch (dbErr) {
+      console.error("[Supabase Admin Session Save Error]:", dbErr.message);
+    }
+  }
 
   const currentStage = await getActiveContestStage();
   console.log(`[${new Date().toISOString()}] ADMIN LOGIN OK: ${username}`);
@@ -625,11 +663,18 @@ app.get(["/admin/verify", "/api/admin/verify"], requireAdmin, async (_req, res) 
   });
 });
 
-app.post(["/admin/logout", "/api/admin/logout"], (req, res) => {
+app.post(["/admin/logout", "/api/admin/logout"], async (req, res) => {
   const token =
     req.headers["x-admin-token"] ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
-  if (token) ADMIN_SESSIONS.delete(token);
+  if (token) {
+    ADMIN_SESSIONS.delete(token);
+    if (supabase) {
+      try {
+        await supabase.from("admin_sessions").delete().eq("token", token);
+      } catch {}
+    }
+  }
   return res.json({ success: true, message: "Admin logged out." });
 });
 
