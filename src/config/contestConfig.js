@@ -218,6 +218,21 @@ export function validateContestParams(searchOrParams) {
 }
 
 /**
+ * Maps contest stage keys ("round0", "round1", "round2_phase1", etc.)
+ * to their canonical query string representation.
+ */
+export function getStageQuery(stage) {
+  switch (stage) {
+    case "round0": return "?round=0";
+    case "round2_phase1": return "?round=2&phase=1";
+    case "round2_phase2": return "?round=2&phase=2";
+    case "round2_phase3": return "?round=2&phase=3";
+    default: return "?round=1";
+  }
+}
+
+
+/**
  * Helper to retrieve the target contest or challenge URL
  * for a given round, phase, and land key.
  *

@@ -26,6 +26,8 @@ export default function Admin() {
   const [activeStage, setActiveStage] = useState("round1");
   const [selectedStage, setSelectedStage] = useState("round1");
   const [disabledLands, setDisabledLands] = useState([]);
+  const [bypassLogin, setBypassLogin] = useState(false);
+  const [togglingBypass, setTogglingBypass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingLands, setSavingLands] = useState(false);
   const [landFilter, setLandFilter] = useState("");
@@ -52,11 +54,15 @@ export default function Admin() {
         if (Array.isArray(data.disabledLands)) {
           setDisabledLands(data.disabledLands);
         }
+        if (typeof data.bypassLogin === "boolean") {
+          setBypassLogin(data.bypassLogin);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch contest status:", err);
     }
   }, [apiUrl]);
+
 
   useEffect(() => {
     fetchStatus();
@@ -159,6 +165,53 @@ export default function Admin() {
       setStatusType("error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle Login Dependency Bypass Toggle (Nuke Button)
+  const handleToggleBypassLogin = async () => {
+    const targetState = !bypassLogin;
+    setTogglingBypass(true);
+    setStatusMsg("");
+
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/contest/bypass-login`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ bypassLogin: targetState }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setBypassLogin(data.bypassLogin);
+        localStorage.setItem("coc_bypass_login", String(data.bypassLogin));
+        setStatusMsg(
+          data.bypassLogin
+            ? "☢️ LOGIN DEPENDENCY NUKED! All incoming users now enter the Arena directly."
+            : "🛡️ Login requirement restored. Users must log in with credentials."
+        );
+        setStatusType(data.bypassLogin ? "error" : "success");
+      } else {
+        if (res.status === 401) {
+          removeStoredAdminToken();
+          setAdminToken("");
+          setStatusMsg("Session expired. Please log in again.");
+          setStatusType("error");
+        } else {
+          setStatusMsg(data.message || "Failed to update login bypass state.");
+          setStatusType("error");
+        }
+      }
+    } catch (err) {
+      setStatusMsg("Network error. Could not reach backend: " + err.message);
+      setStatusType("error");
+    } finally {
+      setTogglingBypass(false);
     }
   };
 
@@ -565,6 +618,80 @@ export default function Admin() {
               >
                 {loading ? "UPDATING STAGE..." : "UPDATE STAGE ⚡"}
               </button>
+            </div>
+
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* ☢️ LOGIN DEPENDENCY CONTROL PANEL (NUKE BUTTON)            */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div style={{
+              borderTop: "1px solid rgba(255, 196, 81, 0.25)",
+              paddingTop: "24px",
+              marginBottom: "32px",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+                <div>
+                  <h3 style={{ fontSize: "15px", color: bypassLogin ? "#ef4444" : "#FFC451", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "800", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span>☢️ Login Dependency Control</span>
+                  </h3>
+                  <div style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "4px" }}>
+                    Completely remove login requirement and automatically redirect all visitors directly to the Contest Arena of the active stage.
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: "11px",
+                  padding: "4px 12px",
+                  borderRadius: "100px",
+                  background: bypassLogin ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 197, 94, 0.15)",
+                  border: `1px solid ${bypassLogin ? "#ef4444" : "#22c55e"}`,
+                  color: bypassLogin ? "#fca5a5" : "#86efac",
+                  fontWeight: "800",
+                  letterSpacing: "0.5px"
+                }}>
+                  {bypassLogin ? "☢️ LOGIN NUKED (PUBLIC ARENA)" : "🔒 LOGIN REQUIRED"}
+                </span>
+              </div>
+
+              <div style={{
+                padding: "16px",
+                borderRadius: "12px",
+                background: bypassLogin ? "rgba(239, 68, 68, 0.1)" : "rgba(17, 24, 39, 0.6)",
+                border: `1px solid ${bypassLogin ? "rgba(239, 68, 68, 0.4)" : "rgba(255, 196, 81, 0.2)"}`,
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px"
+              }}>
+                <p style={{ margin: 0, fontSize: "13px", color: "#D1D5DB", lineHeight: "1.5" }}>
+                  {bypassLogin
+                    ? "⚠️ Login dependency is currently NUKED. Anyone accessing the website is routed straight into the 3D Contest Arena without entering credentials."
+                    : "Users must enter their valid team credentials on the Login page to access the 3D Contest Arena."}
+                </p>
+
+                <button
+                  onClick={handleToggleBypassLogin}
+                  disabled={togglingBypass}
+                  style={{
+                    width: "100%",
+                    background: bypassLogin ? "#22c55e" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                    color: bypassLogin ? "#000" : "#fff",
+                    fontWeight: "900",
+                    fontSize: "14px",
+                    letterSpacing: "1.5px",
+                    padding: "14px 24px",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: togglingBypass ? "wait" : "pointer",
+                    boxShadow: bypassLogin ? "0 0 15px rgba(34, 197, 94, 0.4)" : "0 0 25px rgba(239, 68, 68, 0.6)",
+                    transition: "all 0.2s ease",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  {togglingBypass
+                    ? "PROCESSING..."
+                    : bypassLogin
+                      ? "🛡️ RESTORE LOGIN REQUIREMENT"
+                      : "☢️ NUKE LOGIN DEPENDENCY (BYPASS LOGIN)"}
+                </button>
+              </div>
             </div>
 
             {/* ══════════════════════════════════════════════════════════ */}

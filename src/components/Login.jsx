@@ -24,12 +24,36 @@ export default function Login() {
 
   const { queryString } = validateContestParams(location.search);
 
-  // If already logged in send straight to arena
+  // Check if logged in OR if login dependency is nuked globally/locally
   useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY)) {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    const localBypass = typeof window !== "undefined" && (localStorage.getItem("coc_bypass_login") === "true" || location.search.includes("nuke=true"));
+
+    if (token || localBypass) {
       navigate(`/arena${queryString}`, { replace: true });
+      return;
     }
-  }, []);
+
+    const apiBase = import.meta.env.VITE_API_URL !== undefined
+      ? import.meta.env.VITE_API_URL
+      : (import.meta.env.DEV ? "http://localhost:5000" : "");
+
+    fetch(`${apiBase}/api/contest/status`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.bypassLogin) {
+          msg("☢️ Login requirement nuked by organizers. Redirecting to Arena...", false);
+          const stageQuery = data.activeStage === "round0" ? "?round=0" :
+            data.activeStage === "round2_phase1" ? "?round=2&phase=1" :
+            data.activeStage === "round2_phase2" ? "?round=2&phase=2" :
+            data.activeStage === "round2_phase3" ? "?round=2&phase=3" : "?round=1";
+          setTimeout(() => {
+            navigate(`/arena${stageQuery}`, { replace: true });
+          }, 300);
+        }
+      })
+      .catch(() => {});
+  }, [location.search, navigate, queryString]);
 
   // Clean up on unmount
   useEffect(() => () => abortRef.current?.abort(), []);

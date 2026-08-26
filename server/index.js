@@ -430,6 +430,7 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
 const ALLOWED_STAGES = ["round0", "round1", "round2_phase1", "round2_phase2", "round2_phase3"];
 let memoryActiveStage = "round1";
 let memoryDisabledLands = [];
+let memoryBypassLogin = false;
 
 const ADMIN_SESSIONS = new Map();
 const rawAdminUser = process.env.ADMIN_USERNAME || "";
@@ -444,14 +445,14 @@ const STATE_CACHE_TTL = 30 * 1000; // 30 seconds — admin writes always invalid
 async function getContestState() {
   const now = Date.now();
   if (now < stateCacheExpiresAt) {
-    return { activeStage: memoryActiveStage, disabledLands: memoryDisabledLands };
+    return { activeStage: memoryActiveStage, disabledLands: memoryDisabledLands, bypassLogin: memoryBypassLogin };
   }
 
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from("contest_state")
-        .select("active_stage, disabled_lands")
+        .select("active_stage, disabled_lands, bypass_login")
         .eq("id", "current")
         .maybeSingle();
 
@@ -462,13 +463,16 @@ async function getContestState() {
         if (Array.isArray(data.disabled_lands)) {
           memoryDisabledLands = data.disabled_lands;
         }
+        if (typeof data.bypass_login === "boolean") {
+          memoryBypassLogin = data.bypass_login;
+        }
         stateCacheExpiresAt = now + STATE_CACHE_TTL;
       }
     } catch (err) {
       console.error("[Supabase State Query Error]:", err.message);
     }
   }
-  return { activeStage: memoryActiveStage, disabledLands: memoryDisabledLands };
+  return { activeStage: memoryActiveStage, disabledLands: memoryDisabledLands, bypassLogin: memoryBypassLogin };
 }
 
 async function getActiveContestStage() {
@@ -489,6 +493,7 @@ async function setActiveContestStage(newStage) {
           id: "current",
           active_stage: newStage,
           disabled_lands: memoryDisabledLands,
+          bypass_login: memoryBypassLogin,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }
@@ -520,6 +525,7 @@ async function setDisabledLands(lands) {
           id: "current",
           active_stage: memoryActiveStage,
           disabled_lands: sanitized,
+          bypass_login: memoryBypassLogin,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }
@@ -533,6 +539,33 @@ async function setDisabledLands(lands) {
   memoryDisabledLands = sanitized;
   stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
   return memoryDisabledLands;
+}
+
+async function setBypassLogin(bypass) {
+  const isBypassed = Boolean(bypass);
+
+  if (supabase) {
+    const { error } = await supabase
+      .from("contest_state")
+      .upsert(
+        {
+          id: "current",
+          active_stage: memoryActiveStage,
+          disabled_lands: memoryDisabledLands,
+          bypass_login: isBypassed,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+    if (error) {
+      console.error("[Supabase Bypass Login Save Error]:", error.message);
+    }
+  }
+
+  memoryBypassLogin = isBypassed;
+  stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
+  return memoryBypassLogin;
 }
 
 function requireAdmin(req, res, next) {
@@ -564,9 +597,11 @@ app.get(["/contest/status", "/api/contest/status", "/api/contest-status", "/api/
     success: true,
     activeStage: state.activeStage,
     disabledLands: state.disabledLands,
+    bypassLogin: Boolean(state.bypassLogin),
     timestamp: new Date().toISOString(),
   });
 });
+
 
 // ═══════════════════════════════════════════════════════════════
 //  ADMIN AUTHENTICATION & STAGE CONTROL APIS
@@ -699,6 +734,33 @@ app.all(["/admin/contest/disabled-lands", "/api/admin/contest/disabled-lands", "
   }
 });
 
+// Update login requirement bypass (PATCH & POST)
+app.all(["/admin/contest/bypass-login", "/api/admin/contest/bypass-login", "/api/admin/bypass-login"], requireAdmin, async (req, res) => {
+  if (req.method !== "PATCH" && req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
+  }
+
+  const { bypassLogin } = req.body;
+  if (typeof bypassLogin !== "boolean") {
+    return res.status(400).json({ success: false, message: "bypassLogin boolean field is required." });
+  }
+
+  try {
+    const updated = await setBypassLogin(bypassLogin);
+    console.log(`[${new Date().toISOString()}] ☢️ ADMIN UPDATED BYPASS LOGIN TO: ${updated} (by ${req.adminUser})`);
+    return res.json({
+      success: true,
+      bypassLogin: updated,
+      activeStage: memoryActiveStage,
+      message: updated ? "Login requirement nuked. Arena is public." : "Login requirement restored.",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update bypass login state:", err.message);
+    return res.status(500).json({ success: false, message: "Failed to update bypass login state." });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════
 //  CONTEST ACCESS & ELIGIBILITY VERIFICATION API
 // ═══════════════════════════════════════════════════════════════
@@ -738,6 +800,7 @@ app.all(["/contest/verify-access", "/api/contest/verify-access", "/api/contest/a
       allowed: false,
       activeStage,
       requestedStage,
+      bypassLogin: memoryBypassLogin,
       message: `${stageTitles[requestedStage] || requestedStage} is not currently active. Active stage: ${stageTitles[activeStage] || activeStage}.`,
     });
   }
@@ -748,8 +811,10 @@ app.all(["/contest/verify-access", "/api/contest/verify-access", "/api/contest/a
     activeStage,
     requestedStage,
     disabledLands: memoryDisabledLands,
+    bypassLogin: memoryBypassLogin,
   });
 });
+
 
 app.post(["/logout", "/api/logout"], (req, res) => {
   const token = req.headers["x-session-token"];
