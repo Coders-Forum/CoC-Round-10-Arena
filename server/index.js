@@ -4,9 +4,24 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import dotenv from "dotenv";
+import os from "os";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function getStoreFilePath() {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY) {
+    return path.join(os.tmpdir(), "contest_store.json");
+  }
+  return path.join(__dirname, "data", "contest_store.json");
+}
+
 
 const app = express();
 
@@ -383,8 +398,6 @@ app.post(["/login", "/api/login"], loginLimiter, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 //  CONTEST STAGE MANAGEMENT (Admin-Controlled Single Source of Truth)
 // ═══════════════════════════════════════════════════════════════
-//  CONTEST STAGE & DISABLED LANDS MANAGEMENT (Admin Controlled)
-// ═══════════════════════════════════════════════════════════════
 const ALLOWED_STAGES = ["round0", "round1", "round2_phase1", "round2_phase2", "round2_phase3"];
 let memoryActiveStage = "round1";
 let memoryDisabledLands = [];
@@ -393,18 +406,110 @@ let memoryBypassLogin = false;
 let stateCacheExpiresAt = 0;
 const STATE_CACHE_TTL = 30 * 1000; // 30 seconds — admin writes always invalidate immediately
 
+// Local Disk Backup Persistence Helpers
+function saveStateToDisk() {
+  try {
+    const storePath = getStoreFilePath();
+    const dir = path.dirname(storePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const fullState = {
+      activeStage: memoryActiveStage,
+      disabledLands: memoryDisabledLands,
+      bypassLogin: memoryBypassLogin,
+      activeResultsPhase: memoryActiveResultsPhase,
+      eliminatedTeams: memoryEliminatedTeams,
+      phase1Conquests: memoryPhase1Conquests,
+      phase2Conquests: memoryPhase2Conquests,
+      phase3Conquests: memoryPhase3Conquests,
+      teamConquests: memoryTeamConquests,
+      manualRanks: memoryManualRanks,
+      updatedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(storePath, JSON.stringify(fullState, null, 2), "utf8");
+  } catch (err) {
+    console.warn("⚠️ [Disk Store Write Warning]:", err.message);
+  }
+}
+
+function loadStateFromDisk() {
+  try {
+    const storePath = getStoreFilePath();
+    if (fs.existsSync(storePath)) {
+      const raw = fs.readFileSync(storePath, "utf8");
+      const data = JSON.parse(raw);
+      if (data) {
+        if (data.activeStage && ALLOWED_STAGES.includes(data.activeStage)) memoryActiveStage = data.activeStage;
+        if (Array.isArray(data.disabledLands)) memoryDisabledLands = data.disabledLands;
+        if (typeof data.bypassLogin === "boolean") memoryBypassLogin = data.bypassLogin;
+        if (data.activeResultsPhase) memoryActiveResultsPhase = data.activeResultsPhase;
+        if (Array.isArray(data.eliminatedTeams)) memoryEliminatedTeams = data.eliminatedTeams;
+        if (data.phase1Conquests) memoryPhase1Conquests = data.phase1Conquests;
+        if (data.phase2Conquests) memoryPhase2Conquests = data.phase2Conquests;
+        if (data.phase3Conquests) memoryPhase3Conquests = data.phase3Conquests;
+        if (data.teamConquests) memoryTeamConquests = data.teamConquests;
+        if (data.manualRanks) memoryManualRanks = data.manualRanks;
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn("⚠️ [Disk Store Read Warning]:", err.message);
+  }
+  return false;
+}
+
+// Unified Save Helper: Saves ALL fields together to Supabase AND local disk (no field clobbering!)
+async function saveContestStateToSupabase() {
+  saveStateToDisk();
+
+  if (supabase) {
+    try {
+      const { error } = await supabase
+        .from("contest_state")
+        .upsert(
+          {
+            id: "current",
+            active_stage: memoryActiveStage,
+            disabled_lands: memoryDisabledLands,
+            bypass_login: memoryBypassLogin,
+            active_results_phase: memoryActiveResultsPhase,
+            eliminated_teams: memoryEliminatedTeams,
+            manual_ranks: memoryManualRanks,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
+
+      if (error) {
+        console.error("[Supabase Save Contest State Error]:", error.message);
+      } else {
+        console.log(`⚡ [Supabase State Saved] stage=${memoryActiveStage}, resultsPhase=${memoryActiveResultsPhase}, eliminated=${memoryEliminatedTeams.length}`);
+      }
+    } catch (err) {
+      console.error("[Supabase Save Contest State Exception]:", err.message);
+    }
+  }
+}
 
 async function getContestState() {
   const now = Date.now();
   if (now < stateCacheExpiresAt) {
-    return { activeStage: memoryActiveStage, disabledLands: memoryDisabledLands, bypassLogin: memoryBypassLogin };
+    return {
+      activeStage: memoryActiveStage,
+      disabledLands: memoryDisabledLands,
+      bypassLogin: memoryBypassLogin,
+      activeResultsPhase: memoryActiveResultsPhase,
+      eliminatedTeams: memoryEliminatedTeams,
+      manualRanks: memoryManualRanks,
+    };
   }
 
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from("contest_state")
-        .select("active_stage, disabled_lands, bypass_login")
+        .select("active_stage, disabled_lands, bypass_login, active_results_phase, eliminated_teams, manual_ranks")
         .eq("id", "current")
         .maybeSingle();
 
@@ -418,13 +523,34 @@ async function getContestState() {
         if (typeof data.bypass_login === "boolean") {
           memoryBypassLogin = data.bypass_login;
         }
+        if (data.active_results_phase) {
+          memoryActiveResultsPhase = data.active_results_phase;
+        }
+        if (Array.isArray(data.eliminated_teams)) {
+          memoryEliminatedTeams = data.eliminated_teams;
+        }
+        if (data.manual_ranks && typeof data.manual_ranks === "object") {
+          memoryManualRanks = data.manual_ranks;
+        }
         stateCacheExpiresAt = now + STATE_CACHE_TTL;
+      } else {
+        loadStateFromDisk();
       }
     } catch (err) {
       console.error("[Supabase State Query Error]:", err.message);
+      loadStateFromDisk();
     }
+  } else {
+    loadStateFromDisk();
   }
-  return { activeStage: memoryActiveStage, disabledLands: memoryDisabledLands, bypassLogin: memoryBypassLogin };
+  return {
+    activeStage: memoryActiveStage,
+    disabledLands: memoryDisabledLands,
+    bypassLogin: memoryBypassLogin,
+    activeResultsPhase: memoryActiveResultsPhase,
+    eliminatedTeams: memoryEliminatedTeams,
+    manualRanks: memoryManualRanks,
+  };
 }
 
 async function getActiveContestStage() {
@@ -436,29 +562,9 @@ async function setActiveContestStage(newStage) {
   if (!ALLOWED_STAGES.includes(newStage)) {
     throw new Error(`Invalid stage: ${newStage}`);
   }
-
-  if (supabase) {
-    const { error } = await supabase
-      .from("contest_state")
-      .upsert(
-        {
-          id: "current",
-          active_stage: newStage,
-          disabled_lands: memoryDisabledLands,
-          bypass_login: memoryBypassLogin,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
-
-    if (error) {
-      console.error("[Supabase Stage Save Error]:", error.message);
-      throw new Error(`Database error saving stage: ${error.message}`);
-    }
-  }
-
   memoryActiveStage = newStage;
   stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
+  await saveContestStateToSupabase();
   return memoryActiveStage;
 }
 
@@ -466,57 +572,18 @@ async function setDisabledLands(lands) {
   if (!Array.isArray(lands)) {
     throw new Error("disabledLands must be an array");
   }
-
   const sanitized = lands.map((item) => String(item).toLowerCase().trim()).filter(Boolean);
-
-  if (supabase) {
-    const { error } = await supabase
-      .from("contest_state")
-      .upsert(
-        {
-          id: "current",
-          active_stage: memoryActiveStage,
-          disabled_lands: sanitized,
-          bypass_login: memoryBypassLogin,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
-
-    if (error) {
-      console.error("[Supabase Disabled Lands Save Error]:", error.message);
-    }
-  }
-
   memoryDisabledLands = sanitized;
   stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
+  await saveContestStateToSupabase();
   return memoryDisabledLands;
 }
 
 async function setBypassLogin(bypass) {
   const isBypassed = Boolean(bypass);
-
-  if (supabase) {
-    const { error } = await supabase
-      .from("contest_state")
-      .upsert(
-        {
-          id: "current",
-          active_stage: memoryActiveStage,
-          disabled_lands: memoryDisabledLands,
-          bypass_login: isBypassed,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
-
-    if (error) {
-      console.error("[Supabase Bypass Login Save Error]:", error.message);
-    }
-  }
-
   memoryBypassLogin = isBypassed;
   stateCacheExpiresAt = Date.now() + STATE_CACHE_TTL;
+  await saveContestStateToSupabase();
   return memoryBypassLogin;
 }
 
@@ -884,31 +951,7 @@ app.all(["/admin/results/active-phase", "/api/admin/results/active-phase"], requ
 
     memoryActiveResultsPhase = activeResultsPhase;
     conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
-
-    if (supabase) {
-      try {
-        const { error } = await supabase
-          .from("contest_state")
-          .upsert(
-            {
-              id: "current",
-              active_stage: memoryActiveStage,
-              disabled_lands: memoryDisabledLands,
-              bypass_login: memoryBypassLogin,
-              active_results_phase: activeResultsPhase,
-              eliminated_teams: memoryEliminatedTeams,
-              manual_ranks: memoryManualRanks,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "id" }
-          );
-        if (error) {
-          console.error("[Supabase Save Active Results Phase Error]:", error.message);
-        }
-      } catch (dbErr) {
-        console.error("[Supabase Save Active Results Phase Exception]:", dbErr.message);
-      }
-    }
+    await saveContestStateToSupabase();
 
     console.log(`[${new Date().toISOString()}] 🏆 ADMIN SET ACTIVE RESULTS PHASE TO: "${activeResultsPhase}" (by ${req.adminUser})`);
     return res.json({
@@ -938,31 +981,7 @@ app.all(["/admin/teams/eliminate", "/api/admin/teams/eliminate"], requireAdmin, 
     const sanitized = eliminatedTeams.map((t) => String(t).trim()).filter(Boolean);
     memoryEliminatedTeams = sanitized;
     conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
-
-    if (supabase) {
-      try {
-        const { error } = await supabase
-          .from("contest_state")
-          .upsert(
-            {
-              id: "current",
-              active_stage: memoryActiveStage,
-              disabled_lands: memoryDisabledLands,
-              bypass_login: memoryBypassLogin,
-              active_results_phase: memoryActiveResultsPhase,
-              eliminated_teams: sanitized,
-              manual_ranks: memoryManualRanks,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "id" }
-          );
-        if (error) {
-          console.error("[Supabase Save Eliminated Teams Error]:", error.message);
-        }
-      } catch (dbErr) {
-        console.error("[Supabase Save Eliminated Teams Exception]:", dbErr.message);
-      }
-    }
+    await saveContestStateToSupabase();
 
     console.log(`[${new Date().toISOString()}] ❌ ADMIN UPDATED ELIMINATED TEAMS: [${sanitized.join(", ")}] (by ${req.adminUser})`);
     return res.json({
@@ -991,31 +1010,7 @@ app.all(["/admin/results/manual-ranks", "/api/admin/results/manual-ranks"], requ
 
     memoryManualRanks = manualRanks;
     conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
-
-    if (supabase) {
-      try {
-        const { error } = await supabase
-          .from("contest_state")
-          .upsert(
-            {
-              id: "current",
-              active_stage: memoryActiveStage,
-              disabled_lands: memoryDisabledLands,
-              bypass_login: memoryBypassLogin,
-              active_results_phase: memoryActiveResultsPhase,
-              eliminated_teams: memoryEliminatedTeams,
-              manual_ranks: memoryManualRanks,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "id" }
-          );
-        if (error) {
-          console.error("[Supabase Save Manual Ranks Error]:", error.message);
-        }
-      } catch (dbErr) {
-        console.error("[Supabase Save Manual Ranks Exception]:", dbErr.message);
-      }
-    }
+    await saveContestStateToSupabase();
 
     console.log(`[${new Date().toISOString()}] ⚖️ ADMIN UPDATED MANUAL RANKS / TIE-BREAKERS (by ${req.adminUser})`);
     return res.json({
