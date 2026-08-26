@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS public.contest_state (
 
 -- Migration helper if table already exists
 ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS disabled_lands JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS bypass_login BOOLEAN DEFAULT FALSE;
 
 -- 6. Enable Row Level Security (RLS) on contest_state
 ALTER TABLE public.contest_state ENABLE ROW LEVEL SECURITY;
