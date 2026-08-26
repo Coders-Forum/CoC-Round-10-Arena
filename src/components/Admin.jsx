@@ -43,9 +43,12 @@ export default function Admin() {
     return init;
   });
   const [updatingResultsPhase, setUpdatingResultsPhase] = useState(false);
+  const [eliminatedTeams, setEliminatedTeams] = useState([]);
+  const [savingEliminations, setSavingEliminations] = useState(false);
   const [savingConquests, setSavingConquests] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingLands, setSavingLands] = useState(false);
+
 
 
   const [landFilter, setLandFilter] = useState("");
@@ -240,6 +243,7 @@ export default function Admin() {
       const data = await res.json();
       if (data.success) {
         if (data.activeResultsPhase) setActiveResultsPhase(data.activeResultsPhase);
+        if (Array.isArray(data.eliminatedTeams)) setEliminatedTeams(data.eliminatedTeams);
         if (data.phase1Conquests && Object.keys(data.phase1Conquests).length > 0) {
           setPhase1Map(prev => ({ ...prev, ...data.phase1Conquests }));
         }
@@ -255,6 +259,62 @@ export default function Admin() {
   useEffect(() => {
     fetchConquests();
   }, [fetchConquests]);
+
+  // Quick Action: Eliminate trailing 5 teams (rank 21-25)
+  const handleEliminateTrailing5Teams = () => {
+    const trailing5 = phase1Data.slice(-5).map(t => t.teamName);
+    setEliminatedTeams(prev => Array.from(new Set([...prev, ...trailing5])));
+    setStatusMsg(`❌ Marked trailing 5 teams (${trailing5.join(", ")}) as eliminated. Click SAVE ELIMINATIONS to publish.`);
+    setStatusType("info");
+  };
+
+  // Toggle single team elimination status
+  const handleToggleTeamEliminated = (teamName) => {
+    setEliminatedTeams(prev => {
+      const exists = prev.includes(teamName);
+      return exists ? prev.filter(t => t !== teamName) : [...prev, teamName];
+    });
+  };
+
+  // Reset all eliminations
+  const handleResetEliminations = () => {
+    setEliminatedTeams([]);
+    setStatusMsg("Cleared all team eliminations.");
+    setStatusType("info");
+  };
+
+  // Save eliminated teams to backend
+  const handleSaveEliminations = async () => {
+    setSavingEliminations(true);
+    setStatusMsg("");
+
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/teams/eliminate`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ eliminatedTeams }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatusMsg(`❌ Successfully saved eliminations! (${eliminatedTeams.length} teams eliminated).`);
+        setStatusType("success");
+      } else {
+        setStatusMsg(data.message || "Failed to save team eliminations.");
+        setStatusType("error");
+      }
+    } catch (err) {
+      setStatusMsg("Failed to connect to backend: " + err.message);
+      setStatusType("error");
+    } finally {
+      setSavingEliminations(false);
+    }
+  };
+
 
   // Update active results phase visibility (phase1 | phase2 | all)
   const handleUpdateActiveResultsPhase = async (targetPhase) => {
@@ -1051,6 +1111,143 @@ export default function Admin() {
                 })}
               </div>
             </div>
+
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* ❌ TEAM ELIMINATION CONTROL PANEL                          */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div style={{
+              borderTop: "1px solid rgba(239, 68, 68, 0.3)",
+              paddingTop: "24px",
+              marginBottom: "32px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+                <div>
+                  <h3 style={{ fontSize: "15px", color: "#EF4444", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "800", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span>❌ Team Elimination Control</span>
+                  </h3>
+                  <div style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "4px" }}>
+                    Mark teams as eliminated. Trailing teams will display an `ELIMINATED` red badge on the public Results page.
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: "11px",
+                  padding: "4px 12px",
+                  borderRadius: "100px",
+                  background: eliminatedTeams.length > 0 ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 197, 94, 0.15)",
+                  border: `1px solid ${eliminatedTeams.length > 0 ? "#EF4444" : "#22c55e"}`,
+                  color: eliminatedTeams.length > 0 ? "#FCA5A5" : "#86efac",
+                  fontWeight: "800"
+                }}>
+                  {eliminatedTeams.length} TEAMS ELIMINATED
+                </span>
+              </div>
+
+              {/* Quick Action Buttons */}
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "16px" }}>
+                <button
+                  type="button"
+                  onClick={handleEliminateTrailing5Teams}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: "8px",
+                    background: "rgba(239, 68, 68, 0.2)",
+                    border: "1px solid #EF4444",
+                    color: "#FCA5A5",
+                    fontSize: "12px",
+                    fontWeight: "800",
+                    cursor: "pointer",
+                    letterSpacing: "0.5px"
+                  }}
+                >
+                  ❌ ELIMINATE TRAILING 5 TEAMS (RANK 21–25)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetEliminations}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: "8px",
+                    background: "rgba(107, 114, 128, 0.2)",
+                    border: "1px solid rgba(107, 114, 128, 0.4)",
+                    color: "#D1D5DB",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    cursor: "pointer"
+                  }}
+                >
+                  CLEAR ALL ELIMINATIONS
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEliminations}
+                  disabled={savingEliminations}
+                  style={{
+                    marginLeft: "auto",
+                    padding: "10px 20px",
+                    borderRadius: "8px",
+                    background: "#EF4444",
+                    color: "#FFF",
+                    fontWeight: "900",
+                    fontSize: "13px",
+                    border: "none",
+                    cursor: savingEliminations ? "wait" : "pointer",
+                    boxShadow: "0 0 15px rgba(239, 68, 68, 0.4)"
+                  }}
+                >
+                  {savingEliminations ? "SAVING..." : "SAVE ELIMINATIONS ⚡"}
+                </button>
+              </div>
+
+              {/* 25 Teams Elimination Toggle Grid */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: "10px",
+                background: "rgba(0, 0, 0, 0.3)",
+                padding: "16px",
+                borderRadius: "12px",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                maxHeight: "320px",
+                overflowY: "auto"
+              }}>
+                {phase1Data.map((t, idx) => {
+                  const isEliminated = eliminatedTeams.includes(t.teamName);
+                  return (
+                    <div
+                      key={t.teamName}
+                      onClick={() => handleToggleTeamEliminated(t.teamName)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        background: isEliminated ? "rgba(239, 68, 68, 0.15)" : "rgba(255, 255, 255, 0.03)",
+                        border: `1px solid ${isEliminated ? "#EF4444" : "rgba(255, 255, 255, 0.08)"}`,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      <div style={{ fontSize: "12px", fontWeight: "700", color: isEliminated ? "#FCA5A5" : "#E5E7EB", textDecoration: isEliminated ? "line-through" : "none" }}>
+                        <span style={{ color: "#9CA3AF", marginRight: "6px", fontSize: "11px" }}>#{idx + 1}</span>
+                        {t.teamName}
+                      </div>
+                      <span style={{
+                        fontSize: "10px",
+                        fontWeight: "800",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        background: isEliminated ? "#EF4444" : "rgba(34, 197, 94, 0.15)",
+                        color: isEliminated ? "#FFF" : "#4ADE80"
+                      }}>
+                        {isEliminated ? "ELIMINATED" : "ACTIVE"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
 
 
 

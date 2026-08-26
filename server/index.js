@@ -770,6 +770,7 @@ let memoryActiveResultsPhase = "phase1"; // "phase1" | "phase2" | "all"
 let memoryTeamConquests = {};           // { [teamName]: string[] } (overall merged)
 let memoryPhase1Conquests = {};         // { [teamName]: string[] }
 let memoryPhase2Conquests = {};         // { [teamName]: string[] }
+let memoryEliminatedTeams = [];         // string[] array of eliminated team names
 let conquestsCacheExpiresAt = 0;
 const CONQUESTS_CACHE_TTL = 30 * 1000; // 30 seconds
 
@@ -778,12 +779,17 @@ async function loadTeamConquestsFromDB() {
   try {
     const { data: stateData } = await supabase
       .from("contest_state")
-      .select("active_results_phase")
+      .select("active_results_phase, eliminated_teams")
       .eq("id", "current")
       .maybeSingle();
 
-    if (stateData && stateData.active_results_phase) {
-      memoryActiveResultsPhase = stateData.active_results_phase;
+    if (stateData) {
+      if (stateData.active_results_phase) {
+        memoryActiveResultsPhase = stateData.active_results_phase;
+      }
+      if (Array.isArray(stateData.eliminated_teams)) {
+        memoryEliminatedTeams = stateData.eliminated_teams;
+      }
     }
 
     const { data, error } = await supabase
@@ -813,7 +819,7 @@ async function loadTeamConquestsFromDB() {
       memoryPhase1Conquests = freshP1;
       memoryPhase2Conquests = freshP2;
       conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
-      console.log(`[Conquests] Loaded conquest mappings from DB. Active results phase: ${memoryActiveResultsPhase}`);
+      console.log(`[Conquests] Loaded conquest mappings from DB. Active results phase: ${memoryActiveResultsPhase}, Eliminated teams: ${memoryEliminatedTeams.length}`);
     }
   } catch (err) {
     console.error("[Conquests Load Exception]:", err.message);
@@ -827,6 +833,7 @@ async function getTeamConquests() {
       conquests: memoryTeamConquests,
       phase1Conquests: memoryPhase1Conquests,
       phase2Conquests: memoryPhase2Conquests,
+      eliminatedTeams: memoryEliminatedTeams,
     };
   }
   await loadTeamConquestsFromDB();
@@ -835,6 +842,7 @@ async function getTeamConquests() {
     conquests: memoryTeamConquests,
     phase1Conquests: memoryPhase1Conquests,
     phase2Conquests: memoryPhase2Conquests,
+    eliminatedTeams: memoryEliminatedTeams,
   };
 }
 
@@ -884,6 +892,7 @@ app.get(["/results/conquests", "/api/results/conquests", "/api/teams/conquered-l
     conquests: data.conquests,
     phase1Conquests: data.phase1Conquests,
     phase2Conquests: data.phase2Conquests,
+    eliminatedTeams: data.eliminatedTeams,
     timestamp: new Date().toISOString(),
   });
 });
@@ -905,7 +914,7 @@ app.all(["/admin/results/active-phase", "/api/admin/results/active-phase"], requ
   if (supabase) {
     await supabase
       .from("contest_state")
-      .upsert({ id: "current", active_stage: memoryActiveStage, disabled_lands: memoryDisabledLands, bypass_login: memoryBypassLogin, active_results_phase: activeResultsPhase, updated_at: new Date().toISOString() }, { onConflict: "id" })
+      .upsert({ id: "current", active_stage: memoryActiveStage, disabled_lands: memoryDisabledLands, bypass_login: memoryBypassLogin, active_results_phase: activeResultsPhase, eliminated_teams: memoryEliminatedTeams, updated_at: new Date().toISOString() }, { onConflict: "id" })
       .catch((err) => console.error("[Supabase Save Active Results Phase Error]:", err.message));
   }
 
@@ -917,6 +926,38 @@ app.all(["/admin/results/active-phase", "/api/admin/results/active-phase"], requ
     timestamp: new Date().toISOString(),
   });
 });
+
+// Admin API: Set eliminated teams (PATCH & POST)
+app.all(["/admin/teams/eliminate", "/api/admin/teams/eliminate"], requireAdmin, async (req, res) => {
+  if (req.method !== "PATCH" && req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
+  }
+
+  const { eliminatedTeams } = req.body;
+  if (!Array.isArray(eliminatedTeams)) {
+    return res.status(400).json({ success: false, message: "eliminatedTeams array is required." });
+  }
+
+  const sanitized = eliminatedTeams.map((t) => String(t).trim()).filter(Boolean);
+  memoryEliminatedTeams = sanitized;
+  conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
+
+  if (supabase) {
+    await supabase
+      .from("contest_state")
+      .upsert({ id: "current", active_stage: memoryActiveStage, disabled_lands: memoryDisabledLands, bypass_login: memoryBypassLogin, active_results_phase: memoryActiveResultsPhase, eliminated_teams: sanitized, updated_at: new Date().toISOString() }, { onConflict: "id" })
+      .catch((err) => console.error("[Supabase Save Eliminated Teams Error]:", err.message));
+  }
+
+  console.log(`[${new Date().toISOString()}] ❌ ADMIN UPDATED ELIMINATED TEAMS: [${sanitized.join(", ")}] (by ${req.adminUser})`);
+  return res.json({
+    success: true,
+    eliminatedTeams: memoryEliminatedTeams,
+    message: `Eliminated teams updated (${memoryEliminatedTeams.length} teams eliminated).`,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 
 // Admin API: Update team conquered lands for a specific phase
 app.all(["/admin/teams/conquered-lands", "/api/admin/teams/conquered-lands"], requireAdmin, async (req, res) => {

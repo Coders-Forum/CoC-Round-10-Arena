@@ -116,10 +116,7 @@ export default function RankedLeaderboard({ title, subtitle, entries }) {
                         {entries.map((entry, i) => {
                             const rank = i + 1;
                             const lands = getConqueredLands(entry);
-                            const isTop3 = rank <= 3;
-
-                            const rankIcon = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
-                            const rankColor = rank === 1 ? "#FFD700" : rank === 2 ? "#C0C0C0" : rank === 3 ? "#CD7F32" : "#9CA3AF";
+                            const isEliminated = Boolean(entry.isEliminated || entry.status === "eliminated");
 
                             return (
                                 <div key={i}>
@@ -130,13 +127,13 @@ export default function RankedLeaderboard({ title, subtitle, entries }) {
                                         gap: "12px",
                                         padding: "14px 20px",
                                         borderRadius: "14px",
-                                        background: isTop3
-                                            ? "linear-gradient(135deg, rgba(255, 196, 81, 0.12) 0%, rgba(17, 24, 39, 0.85) 100%)"
+                                        background: isEliminated
+                                            ? "rgba(239, 68, 68, 0.08)"
                                             : "rgba(17, 24, 39, 0.75)",
-                                        border: `1px solid ${isTop3 ? "rgba(255, 196, 81, 0.3)" : "rgba(255, 196, 81, 0.1)"}`,
+                                        border: `1px solid ${isEliminated ? "rgba(239, 68, 68, 0.4)" : "rgba(255, 196, 81, 0.1)"}`,
+                                        opacity: isEliminated ? 0.75 : 1,
                                         backdropFilter: "blur(8px)",
                                         WebkitBackdropFilter: "blur(8px)",
-                                        boxShadow: isTop3 ? "0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 196, 81, 0.1)" : "none",
                                         transition: "all 0.2s ease"
                                     }}>
                                         {/* S. No */}
@@ -144,32 +141,52 @@ export default function RankedLeaderboard({ title, subtitle, entries }) {
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
-                                            gap: "4px",
-                                            color: rankColor,
+                                            color: isEliminated ? "#EF4444" : "#FFC451",
                                             fontFamily: FONT,
                                             fontSize: "14px",
                                             fontWeight: "800",
                                             letterSpacing: "0.5px"
                                         }}>
-                                            {rankIcon && <span style={{ fontSize: "16px" }}>{rankIcon}</span>}
                                             <span>{rank}</span>
                                         </div>
 
                                         {/* Team Name */}
                                         <div style={{
-                                            color: isTop3 ? "#FFFFFF" : "#E5E7EB",
+                                            color: isEliminated ? "#FCA5A5" : "#E5E7EB",
                                             fontFamily: FONT,
                                             fontSize: "14px",
                                             fontWeight: "700",
                                             letterSpacing: "0.5px",
-                                            textShadow: isTop3 ? "0 0 10px rgba(255, 196, 81, 0.3)" : "none"
+                                            textDecoration: isEliminated ? "line-through" : "none",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px"
                                         }}>
-                                            {entry.teamName}
+                                            <span>{entry.teamName}</span>
                                         </div>
 
-                                        {/* Conquered Land Name(s) */}
+                                        {/* Conquered Land Name(s) / Eliminated Status */}
                                         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
-                                            {lands.length > 0 ? (
+                                            {isEliminated ? (
+                                                <span style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: "6px",
+                                                    background: "rgba(239, 68, 68, 0.2)",
+                                                    border: "1px solid #EF4444",
+                                                    borderRadius: "20px",
+                                                    padding: "4px 12px",
+                                                    color: "#FCA5A5",
+                                                    fontFamily: FONT,
+                                                    fontSize: "11px",
+                                                    fontWeight: "800",
+                                                    letterSpacing: "1px",
+                                                    textTransform: "uppercase"
+                                                }}>
+                                                    <span>❌</span>
+                                                    <span>ELIMINATED</span>
+                                                </span>
+                                            ) : lands.length > 0 ? (
                                                 lands.map((land, idx) => (
                                                     <span
                                                         key={idx}
@@ -204,6 +221,7 @@ export default function RankedLeaderboard({ title, subtitle, entries }) {
                             )
                         })}
                     </div>
+
 
                 </div>
             </div>

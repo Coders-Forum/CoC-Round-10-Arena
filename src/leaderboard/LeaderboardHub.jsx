@@ -21,6 +21,7 @@ export default function LeaderboardHub() {
     const [overallConquests, setOverallConquests] = useState({})
     const [phase1Conquests, setPhase1Conquests] = useState({})
     const [phase2Conquests, setPhase2Conquests] = useState({})
+    const [eliminatedTeams, setEliminatedTeams] = useState([])
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < 768 : false
     )
@@ -43,6 +44,7 @@ export default function LeaderboardHub() {
             .then(data => {
                 if (data.success) {
                     if (data.activeResultsPhase) setActiveResultsPhase(data.activeResultsPhase);
+                    if (Array.isArray(data.eliminatedTeams)) setEliminatedTeams(data.eliminatedTeams);
                     if (data.conquests) setOverallConquests(data.conquests);
                     if (data.phase1Conquests) setPhase1Conquests(data.phase1Conquests);
                     if (data.phase2Conquests) setPhase2Conquests(data.phase2Conquests);
@@ -61,11 +63,13 @@ export default function LeaderboardHub() {
     const activeEntries = (current.data || []).map(entry => {
         const targetMap = activeTab === "phase1" ? phase1Conquests :
                           activeTab === "phase2" ? phase2Conquests : overallConquests;
+        const isEliminated = eliminatedTeams.includes(entry.teamName);
         if (targetMap && targetMap[entry.teamName]) {
-            return { ...entry, conqueredLands: targetMap[entry.teamName] }
+            return { ...entry, conqueredLands: targetMap[entry.teamName], isEliminated }
         }
-        return entry
+        return { ...entry, isEliminated }
     })
+
 
 
 
