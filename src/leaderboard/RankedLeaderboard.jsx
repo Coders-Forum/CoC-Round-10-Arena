@@ -1,13 +1,56 @@
-import { characterOrder } from "./characterOrder.js"
+import React from "react"
 
 const FONT = "'Clash', 'Clash Display', sans-serif"
 
-// Grid: Avatar | Team+Leader | Roll No | Dept | Year | Section
-const GRID_COLS = "44px 1fr 120px 90px 100px 60px"
+// Grid layout for 3 columns: S. No | Team Name | Conquered Land Name(s)
+const GRID_COLS = "80px 220px 1fr"
 
-export default function RankedLeaderboard({ title, subtitle, entries, showDivider = true }) {
+const LAND_MAP = {
+    volcano: "Array Realm",
+    snow: "String Sanctum",
+    plant: "Hash Table Isle",
+    island: "Math Arena",
+    coliseum: "Sorting Coliseum",
+    pyramid: "Searching Pyramid",
+    castle: "DFS Fortress",
+    ruin: "BFS Ruins",
+    mayan: "Database Temple",
+    greek: "Matrix Shrine",
+    pagoda: "2 Pointers Pagoda",
+    pedestal: "Sliding Window Pedestal",
+    cathedral: "Stack Citadel",
+    torii: "Queue Gate",
+    castle2: "Linked List Fort",
+    pagoda2: "Pattern Tower",
+    barracks: "Recursion Barracks",
+    palace: "Backtracking Palace",
+    shrine: "Bit Manipulation Shrine",
+    deadforest: "Mystery Land",
+    temple: "Set Sanctuary",
+    archway: "DP Monument",
+    necro: "Priority Queue Necropolis",
+    cemetery: "Prefix & Suffix Realm",
+    pillars: "Greedy Pillars"
+};
+
+function getConqueredLands(entry) {
+    const raw = entry.conqueredLands ?? entry.conqueredLand ?? entry.conquered_land ?? entry.land;
+    if (!raw) return [];
+    let list = [];
+    if (Array.isArray(raw)) {
+        list = raw;
+    } else if (typeof raw === "string") {
+        list = raw.split(",").map(s => s.trim()).filter(Boolean);
+    }
+    return list.map(item => {
+        const key = String(item).toLowerCase().trim();
+        return LAND_MAP[key] || item;
+    });
+}
+
+export default function RankedLeaderboard({ title, subtitle, entries }) {
     return (
-        <div style={{ width: "100%", maxWidth: "1100px", margin: "0 auto" }}>
+        <div style={{ width: "100%", maxWidth: "900px", margin: "0 auto" }}>
             <div style={{
                 color: "#FFC451",
                 fontFamily: FONT,
@@ -33,34 +76,31 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
                 {title}
             </h2>
 
-            {/* Scrollable wrapper so table doesn't break on mid-size screens */}
+            {/* Scrollable wrapper so table fits on all screen sizes */}
             <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                <div style={{ minWidth: "780px" }}>
+                <div style={{ minWidth: "550px" }}>
 
                     {/* Column Header Row */}
                     <div style={{
                         display: "grid",
                         gridTemplateColumns: GRID_COLS,
                         alignItems: "center",
-                        gap: "10px",
-                        padding: "0 18px",
-                        marginBottom: "10px"
+                        gap: "12px",
+                        padding: "0 20px",
+                        marginBottom: "12px"
                     }}>
                         {[
-                            { label: "",             align: "left"  }, // avatar
-                            { label: "Team / Leader", align: "left" },
-                            { label: "Roll No",      align: "left"  },
-                            { label: "Dept",         align: "left"  },
-                            { label: "Year",         align: "left"  },
-                            { label: "Section",      align: "left"  },
+                            { label: "S. No", align: "center" },
+                            { label: "Team Name", align: "left" },
+                            { label: "Conquered Land Name", align: "left" }
                         ].map((col, ci) => (
                             <div
                                 key={ci}
                                 style={{
                                     color: "#FFC451",
                                     fontFamily: FONT,
-                                    fontSize: "10px",
-                                    fontWeight: "700",
+                                    fontSize: "11px",
+                                    fontWeight: "800",
                                     letterSpacing: "1px",
                                     textTransform: "uppercase",
                                     textAlign: col.align
@@ -71,10 +111,15 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
                         ))}
                     </div>
 
-                    {/* Leaderboard Rows */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {/* Rows */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {entries.map((entry, i) => {
-                            const character = characterOrder[i]
+                            const rank = i + 1;
+                            const lands = getConqueredLands(entry);
+                            const isTop3 = rank <= 3;
+
+                            const rankIcon = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+                            const rankColor = rank === 1 ? "#FFD700" : rank === 2 ? "#C0C0C0" : rank === 3 ? "#CD7F32" : "#9CA3AF";
 
                             return (
                                 <div key={i}>
@@ -82,96 +127,77 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
                                         display: "grid",
                                         gridTemplateColumns: GRID_COLS,
                                         alignItems: "center",
-                                        gap: "10px",
-                                        padding: "12px 18px",
-                                        borderRadius: "12px",
-                                        background: "rgba(17, 24, 39, 0.75)",
-                                        border: "1px solid rgba(255, 196, 81, 0.12)",
+                                        gap: "12px",
+                                        padding: "14px 20px",
+                                        borderRadius: "14px",
+                                        background: isTop3
+                                            ? "linear-gradient(135deg, rgba(255, 196, 81, 0.12) 0%, rgba(17, 24, 39, 0.85) 100%)"
+                                            : "rgba(17, 24, 39, 0.75)",
+                                        border: `1px solid ${isTop3 ? "rgba(255, 196, 81, 0.3)" : "rgba(255, 196, 81, 0.1)"}`,
                                         backdropFilter: "blur(8px)",
                                         WebkitBackdropFilter: "blur(8px)",
+                                        boxShadow: isTop3 ? "0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 196, 81, 0.1)" : "none",
                                         transition: "all 0.2s ease"
                                     }}>
-                                        {/* Avatar */}
-                                        {character ? (
-                                            <img
-                                                src={`/leaderboard-avatars/${character.image}`}
-                                                alt={character.name}
-                                                onError={(e) => { e.target.style.visibility = "hidden" }}
-                                                style={{
-                                                    width: "36px",
-                                                    height: "36px",
-                                                    borderRadius: "50%",
-                                                    objectFit: "cover",
-                                                    border: "1px solid rgba(255, 196, 81, 0.3)"
-                                                }}
-                                            />
-                                        ) : <div style={{ width: "36px" }} />}
+                                        {/* S. No */}
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "4px",
+                                            color: rankColor,
+                                            fontFamily: FONT,
+                                            fontSize: "14px",
+                                            fontWeight: "800",
+                                            letterSpacing: "0.5px"
+                                        }}>
+                                            {rankIcon && <span style={{ fontSize: "16px" }}>{rankIcon}</span>}
+                                            <span>{rank}</span>
+                                        </div>
 
-                                        {/* Team Name + Leader */}
-                                        <div>
-                                            <div style={{
-                                                color: "#FFFFFF",
-                                                fontFamily: FONT,
-                                                fontSize: "13px",
-                                                fontWeight: "700",
-                                                letterSpacing: "0.5px",
-                                                lineHeight: "1.3"
-                                            }}>
-                                                {entry.teamName}
-                                            </div>
-                                            {entry.leader && (
-                                                <div style={{
-                                                    color: "#9CA3AF",
-                                                    fontFamily: FONT,
-                                                    fontSize: "11px",
-                                                    fontWeight: "500",
-                                                    marginTop: "2px"
-                                                }}>
-                                                    {entry.leader}
-                                                </div>
+                                        {/* Team Name */}
+                                        <div style={{
+                                            color: isTop3 ? "#FFFFFF" : "#E5E7EB",
+                                            fontFamily: FONT,
+                                            fontSize: "14px",
+                                            fontWeight: "700",
+                                            letterSpacing: "0.5px",
+                                            textShadow: isTop3 ? "0 0 10px rgba(255, 196, 81, 0.3)" : "none"
+                                        }}>
+                                            {entry.teamName}
+                                        </div>
+
+                                        {/* Conquered Land Name(s) */}
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
+                                            {lands.length > 0 ? (
+                                                lands.map((land, idx) => (
+                                                    <span
+                                                        key={idx}
+                                                        style={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: "5px",
+                                                            background: "rgba(255, 196, 81, 0.12)",
+                                                            border: "1px solid rgba(255, 196, 81, 0.35)",
+                                                            borderRadius: "20px",
+                                                            padding: "4px 12px",
+                                                            color: "#FFC451",
+                                                            fontFamily: FONT,
+                                                            fontSize: "12px",
+                                                            fontWeight: "700",
+                                                            letterSpacing: "0.5px",
+                                                            boxShadow: "0 0 10px rgba(255, 196, 81, 0.12)"
+                                                        }}
+                                                    >
+                                                        <span>🏰</span>
+                                                        <span>{land}</span>
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span style={{ color: "#6B7280", fontFamily: FONT, fontSize: "12px", fontStyle: "italic" }}>
+                                                    —
+                                                </span>
                                             )}
-                                        </div>
-
-                                        {/* Roll No */}
-                                        <div style={{
-                                            color: "#D1D5DB",
-                                            fontFamily: FONT,
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                            letterSpacing: "0.3px"
-                                        }}>
-                                            {entry.rollNo || "—"}
-                                        </div>
-
-                                        {/* Dept */}
-                                        <div style={{
-                                            color: "#D1D5DB",
-                                            fontFamily: FONT,
-                                            fontSize: "11px",
-                                            fontWeight: "600"
-                                        }}>
-                                            {entry.dept || "—"}
-                                        </div>
-
-                                        {/* Year */}
-                                        <div style={{
-                                            color: "#D1D5DB",
-                                            fontFamily: FONT,
-                                            fontSize: "11px",
-                                            fontWeight: "600"
-                                        }}>
-                                            {entry.year || "—"}
-                                        </div>
-
-                                        {/* Section */}
-                                        <div style={{
-                                            color: "#D1D5DB",
-                                            fontFamily: FONT,
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                            textAlign: "center"
-                                        }}>
-                                            {entry.section || "—"}
                                         </div>
                                     </div>
                                 </div>
@@ -184,3 +210,4 @@ export default function RankedLeaderboard({ title, subtitle, entries, showDivide
         </div>
     )
 }
+

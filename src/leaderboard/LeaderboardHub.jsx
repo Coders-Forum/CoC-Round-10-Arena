@@ -7,18 +7,16 @@ import { getLandingPageUrl } from "../config/contestConfig.js"
 const FONT = "'Clash', 'Clash Display', sans-serif"
 
 // Set to true to temporarily suspend results until Round 2
-const RESULTS_SUSPENDED = true
+const RESULTS_SUSPENDED = false
 
 const TABS = [
-    { key: "round0", label: "Round 0 (Top 40)", data: round0Data, subtitle: "Round 0 — Codefront" },
-    { key: "round1", label: "Round 1 (Top 25)", data: round1Data, subtitle: "Round 1 — Code Warfare" },
     { key: "phase1", label: "Phase 1", data: phase1Data, subtitle: "Round 2 · Phase 1 Standings" },
     { key: "phase2", label: "Phase 2", data: phase2Data, subtitle: "Round 2 · Phase 2 Standings" },
-    { key: "overall", label: "Final Standings", icon: "🏆", data: overallData, subtitle: "Round 2 · Grand Champions" }
+    { key: "overall", label: "Final Winners", icon: "🏆", data: overallData, subtitle: "Round 2 · Grand Champions" }
 ]
 
 export default function LeaderboardHub() {
-    const [activeTab, setActiveTab] = useState("round1")
+    const [activeTab, setActiveTab] = useState("phase1")
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < 768 : false
     )

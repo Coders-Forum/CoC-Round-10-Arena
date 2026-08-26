@@ -542,6 +542,7 @@ export const round1Data = [
 export const phase1Data = [
     {
         "teamName": "Phoneix",
+        "conqueredLands": ["Array Realm", "String Sanctum"],
         "leader": "Varun S",
         "rollNo": "2024PECCS645",
         "dept": "CSE",
@@ -550,6 +551,7 @@ export const phase1Data = [
     },
     {
         "teamName": "Team Weberse",
+        "conqueredLands": ["Hash Table Isle"],
         "leader": "Al Jaseera Banu H",
         "rollNo": "2024PECEE106",
         "dept": "EEE",
@@ -558,6 +560,7 @@ export const phase1Data = [
     },
     {
         "teamName": "TriByte",
+        "conqueredLands": ["Math Arena"],
         "leader": "Aradhana M",
         "rollNo": "2025PECCS135",
         "dept": "CSE",
@@ -566,6 +569,7 @@ export const phase1Data = [
     },
     {
         "teamName": "FluxNext",
+        "conqueredLands": ["Sorting Coliseum"],
         "leader": "Kumaran M",
         "rollNo": "2024PECAI435",
         "dept": "AI & DS",
@@ -574,6 +578,7 @@ export const phase1Data = [
     },
     {
         "teamName": "DYNAMIC TRIO",
+        "conqueredLands": ["Searching Pyramid"],
         "leader": "Harshavarthini G",
         "rollNo": "2025PECIT162",
         "dept": "IT",
@@ -582,6 +587,7 @@ export const phase1Data = [
     },
     {
         "teamName": "Zevik",
+        "conqueredLands": ["DFS Fortress"],
         "leader": "Johovit V",
         "rollNo": "2024PECCS969",
         "dept": "CSE",
@@ -590,6 +596,7 @@ export const phase1Data = [
     },
     {
         "teamName": "Ctrl Alt Defeat",
+        "conqueredLands": ["BFS Ruins"],
         "leader": "Ramya  M",
         "rollNo": "2024PECIT254",
         "dept": "IT",
@@ -598,6 +605,7 @@ export const phase1Data = [
     },
     {
         "teamName": "Code vizzzz..",
+        "conqueredLands": ["Database Temple"],
         "leader": "Arunapriya S",
         "rollNo": "2025PECCS138",
         "dept": "CSE",
@@ -606,6 +614,7 @@ export const phase1Data = [
     },
     {
         "teamName": "Team Runtime error",
+        "conqueredLands": ["Matrix Shrine"],
         "leader": "Padmajaa S",
         "rollNo": "2024PECCS379",
         "dept": "CSE",
@@ -614,6 +623,7 @@ export const phase1Data = [
     },
     {
         "teamName": "The NullPointer",
+        "conqueredLands": ["2 Pointers Pagoda"],
         "leader": "TANISHKA PANDEY",
         "rollNo": "2024PECCS523",
         "dept": "CSE",
@@ -626,6 +636,7 @@ export const phase1Data = [
 export const phase2Data = [
     {
         "teamName": "Phoneix",
+        "conqueredLands": ["Sliding Window Pedestal", "Stack Citadel"],
         "leader": "Varun S",
         "rollNo": "2024PECCS645",
         "dept": "CSE",
@@ -634,6 +645,7 @@ export const phase2Data = [
     },
     {
         "teamName": "Team Weberse",
+        "conqueredLands": ["Queue Gate", "Linked List Fort"],
         "leader": "Al Jaseera Banu H",
         "rollNo": "2024PECEE106",
         "dept": "EEE",
@@ -642,6 +654,7 @@ export const phase2Data = [
     },
     {
         "teamName": "TriByte",
+        "conqueredLands": ["Pattern Tower"],
         "leader": "Aradhana M",
         "rollNo": "2025PECCS135",
         "dept": "CSE",
@@ -650,6 +663,7 @@ export const phase2Data = [
     },
     {
         "teamName": "FluxNext",
+        "conqueredLands": ["Recursion Barracks"],
         "leader": "Kumaran M",
         "rollNo": "2024PECAI435",
         "dept": "AI & DS",
@@ -658,6 +672,7 @@ export const phase2Data = [
     },
     {
         "teamName": "DYNAMIC TRIO",
+        "conqueredLands": ["Backtracking Palace"],
         "leader": "Harshavarthini G",
         "rollNo": "2025PECIT162",
         "dept": "IT",
@@ -666,6 +681,7 @@ export const phase2Data = [
     },
     {
         "teamName": "Zevik",
+        "conqueredLands": ["Bit Manipulation Shrine"],
         "leader": "Johovit V",
         "rollNo": "2024PECCS969",
         "dept": "CSE",
@@ -674,6 +690,7 @@ export const phase2Data = [
     },
     {
         "teamName": "Ctrl Alt Defeat",
+        "conqueredLands": ["Mystery Land"],
         "leader": "Ramya  M",
         "rollNo": "2024PECIT254",
         "dept": "IT",
@@ -682,6 +699,7 @@ export const phase2Data = [
     },
     {
         "teamName": "Code vizzzz..",
+        "conqueredLands": ["Set Sanctuary"],
         "leader": "Arunapriya S",
         "rollNo": "2025PECCS138",
         "dept": "CSE",
@@ -690,6 +708,7 @@ export const phase2Data = [
     },
     {
         "teamName": "Team Runtime error",
+        "conqueredLands": ["DP Monument"],
         "leader": "Padmajaa S",
         "rollNo": "2024PECCS379",
         "dept": "CSE",
@@ -698,6 +717,7 @@ export const phase2Data = [
     },
     {
         "teamName": "The NullPointer",
+        "conqueredLands": ["Priority Queue Necropolis"],
         "leader": "TANISHKA PANDEY",
         "rollNo": "2024PECCS523",
         "dept": "CSE",
@@ -710,6 +730,7 @@ export const phase2Data = [
 export const overallData = [
     {
         "teamName": "Phoneix",
+        "conqueredLands": ["Array Realm", "String Sanctum", "Sliding Window Pedestal", "Stack Citadel"],
         "leader": "Varun S",
         "rollNo": "2024PECCS645",
         "dept": "CSE",
@@ -718,6 +739,7 @@ export const overallData = [
     },
     {
         "teamName": "Team Weberse",
+        "conqueredLands": ["Hash Table Isle", "Queue Gate", "Linked List Fort"],
         "leader": "Al Jaseera Banu H",
         "rollNo": "2024PECEE106",
         "dept": "EEE",
@@ -726,6 +748,7 @@ export const overallData = [
     },
     {
         "teamName": "TriByte",
+        "conqueredLands": ["Math Arena", "Pattern Tower"],
         "leader": "Aradhana M",
         "rollNo": "2025PECCS135",
         "dept": "CSE",
@@ -734,6 +757,7 @@ export const overallData = [
     },
     {
         "teamName": "FluxNext",
+        "conqueredLands": ["Sorting Coliseum", "Recursion Barracks"],
         "leader": "Kumaran M",
         "rollNo": "2024PECAI435",
         "dept": "AI & DS",
@@ -742,6 +766,7 @@ export const overallData = [
     },
     {
         "teamName": "DYNAMIC TRIO",
+        "conqueredLands": ["Searching Pyramid", "Backtracking Palace"],
         "leader": "Harshavarthini G",
         "rollNo": "2025PECIT162",
         "dept": "IT",
@@ -750,6 +775,7 @@ export const overallData = [
     },
     {
         "teamName": "Zevik",
+        "conqueredLands": ["DFS Fortress", "Bit Manipulation Shrine"],
         "leader": "Johovit V",
         "rollNo": "2024PECCS969",
         "dept": "CSE",
@@ -758,6 +784,7 @@ export const overallData = [
     },
     {
         "teamName": "Ctrl Alt Defeat",
+        "conqueredLands": ["BFS Ruins", "Mystery Land"],
         "leader": "Ramya  M",
         "rollNo": "2024PECIT254",
         "dept": "IT",
@@ -766,6 +793,7 @@ export const overallData = [
     },
     {
         "teamName": "Code vizzzz..",
+        "conqueredLands": ["Database Temple", "Set Sanctuary"],
         "leader": "Arunapriya S",
         "rollNo": "2025PECCS138",
         "dept": "CSE",
@@ -774,6 +802,7 @@ export const overallData = [
     },
     {
         "teamName": "Team Runtime error",
+        "conqueredLands": ["Matrix Shrine", "DP Monument"],
         "leader": "Padmajaa S",
         "rollNo": "2024PECCS379",
         "dept": "CSE",
@@ -782,6 +811,7 @@ export const overallData = [
     },
     {
         "teamName": "The NullPointer",
+        "conqueredLands": ["2 Pointers Pagoda", "Priority Queue Necropolis"],
         "leader": "TANISHKA PANDEY",
         "rollNo": "2024PECCS523",
         "dept": "CSE",
