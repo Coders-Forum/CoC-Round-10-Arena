@@ -766,10 +766,11 @@ app.all(["/admin/contest/bypass-login", "/api/admin/contest/bypass-login", "/api
 //  — RAM cache (30s TTL) backed by Supabase teams & contest_state
 //  — Supports Phase 1, Phase 2, and Final Winners activation & locking
 // ═══════════════════════════════════════════════════════════════
-let memoryActiveResultsPhase = "phase1"; // "phase1" | "phase2" | "all"
+let memoryActiveResultsPhase = "phase1"; // "phase1" | "phase2" | "phase3" | "all"
 let memoryTeamConquests = {};           // { [teamName]: string[] } (overall merged)
 let memoryPhase1Conquests = {};         // { [teamName]: string[] }
 let memoryPhase2Conquests = {};         // { [teamName]: string[] }
+let memoryPhase3Conquests = {};         // { [teamName]: string[] }
 let memoryEliminatedTeams = [];         // string[] array of eliminated team names
 let conquestsCacheExpiresAt = 0;
 const CONQUESTS_CACHE_TTL = 30 * 1000; // 30 seconds
@@ -794,13 +795,14 @@ async function loadTeamConquestsFromDB() {
 
     const { data, error } = await supabase
       .from("teams")
-      .select("team_name, conquered_land, phase1_lands, phase2_lands")
+      .select("team_name, conquered_land, phase1_lands, phase2_lands, phase3_lands")
       .eq("status", "active");
 
     if (!error && Array.isArray(data)) {
       const freshOverall = {};
       const freshP1 = {};
       const freshP2 = {};
+      const freshP3 = {};
 
       for (const row of data) {
         if (row.team_name) {
@@ -813,11 +815,15 @@ async function loadTeamConquestsFromDB() {
           if (Array.isArray(row.phase2_lands) && row.phase2_lands.length > 0) {
             freshP2[row.team_name] = row.phase2_lands;
           }
+          if (Array.isArray(row.phase3_lands) && row.phase3_lands.length > 0) {
+            freshP3[row.team_name] = row.phase3_lands;
+          }
         }
       }
       memoryTeamConquests = freshOverall;
       memoryPhase1Conquests = freshP1;
       memoryPhase2Conquests = freshP2;
+      memoryPhase3Conquests = freshP3;
       conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
       console.log(`[Conquests] Loaded conquest mappings from DB. Active results phase: ${memoryActiveResultsPhase}, Eliminated teams: ${memoryEliminatedTeams.length}`);
     }
@@ -833,6 +839,7 @@ async function getTeamConquests() {
       conquests: memoryTeamConquests,
       phase1Conquests: memoryPhase1Conquests,
       phase2Conquests: memoryPhase2Conquests,
+      phase3Conquests: memoryPhase3Conquests,
       eliminatedTeams: memoryEliminatedTeams,
     };
   }
@@ -842,23 +849,27 @@ async function getTeamConquests() {
     conquests: memoryTeamConquests,
     phase1Conquests: memoryPhase1Conquests,
     phase2Conquests: memoryPhase2Conquests,
+    phase3Conquests: memoryPhase3Conquests,
     eliminatedTeams: memoryEliminatedTeams,
   };
 }
 
 async function saveTeamConquest(teamName, phase, conqueredLands) {
-  const targetPhase = phase === "phase2" ? "phase2" : "phase1";
+  const targetPhase = phase === "phase3" ? "phase3" : phase === "phase2" ? "phase2" : "phase1";
 
-  if (targetPhase === "phase2") {
+  if (targetPhase === "phase3") {
+    memoryPhase3Conquests[teamName] = conqueredLands;
+  } else if (targetPhase === "phase2") {
     memoryPhase2Conquests[teamName] = conqueredLands;
   } else {
     memoryPhase1Conquests[teamName] = conqueredLands;
   }
 
-  // Combine phase 1 & phase 2 lands into overall team lands
+  // Combine phase 1, phase 2 & phase 3 lands into overall team lands
   const p1 = memoryPhase1Conquests[teamName] || [];
   const p2 = memoryPhase2Conquests[teamName] || [];
-  const combined = Array.from(new Set([...p1, ...p2]));
+  const p3 = memoryPhase3Conquests[teamName] || [];
+  const combined = Array.from(new Set([...p1, ...p2, ...p3]));
   memoryTeamConquests[teamName] = combined;
   conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
 
@@ -868,6 +879,9 @@ async function saveTeamConquest(teamName, phase, conqueredLands) {
       conquered_land: combined,
       total_lands: combined.length,
     };
+    if (targetPhase === "phase1") updateObj.phase1_lands = conqueredLands;
+    if (targetPhase === "phase2") updateObj.phase2_lands = conqueredLands;
+    if (targetPhase === "phase3") updateObj.phase3_lands = conqueredLands;
 
     const { error } = await supabase
       .from("teams")
@@ -892,12 +906,13 @@ app.get(["/results/conquests", "/api/results/conquests", "/api/teams/conquered-l
     conquests: data.conquests,
     phase1Conquests: data.phase1Conquests,
     phase2Conquests: data.phase2Conquests,
+    phase3Conquests: data.phase3Conquests,
     eliminatedTeams: data.eliminatedTeams,
     timestamp: new Date().toISOString(),
   });
 });
 
-// Admin API: Set active results phase visibility (phase1 | phase2 | all)
+// Admin API: Set active results phase visibility (phase1 | phase2 | phase3 | all)
 app.all(["/admin/results/active-phase", "/api/admin/results/active-phase"], requireAdmin, async (req, res) => {
   if (req.method !== "PATCH" && req.method !== "POST") {
     return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
@@ -905,8 +920,8 @@ app.all(["/admin/results/active-phase", "/api/admin/results/active-phase"], requ
 
   try {
     const { activeResultsPhase } = req.body || {};
-    if (!["phase1", "phase2", "all"].includes(activeResultsPhase)) {
-      return res.status(400).json({ success: false, message: "Invalid activeResultsPhase. Must be 'phase1', 'phase2', or 'all'." });
+    if (!["phase1", "phase2", "phase3", "all"].includes(activeResultsPhase)) {
+      return res.status(400).json({ success: false, message: "Invalid activeResultsPhase. Must be 'phase1', 'phase2', 'phase3', or 'all'." });
     }
 
     memoryActiveResultsPhase = activeResultsPhase;

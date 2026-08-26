@@ -596,6 +596,35 @@ export const phase2Data = [
     { teamName: "HACKPIXEL", leader: "PRAVEEN RAJ E", rollNo: "2024PECEC354", dept: "ECE", year: "III Year", section: "E", conqueredLands: ["Array Realm"] }
 ];
 
+// ── Round 2 — Phase 3 ─────────────────────────────────────────────────
+export const phase3Data = [
+    { teamName: "Phoneix", leader: "Varun S", rollNo: "2024PECCS645", dept: "CSE", year: "III Year", section: "I", conqueredLands: ["Mystery Land"] },
+    { teamName: "Team Weberse", leader: "Al Jaseera Banu H", rollNo: "2024PECEE106", dept: "EEE", year: "III Year", section: "A", conqueredLands: ["Sorting Coliseum"] },
+    { teamName: "Zevik", leader: "Johovit V", rollNo: "2024PECCS969", dept: "CSE", year: "III Year", section: "N", conqueredLands: ["Sliding Window Pedestal"] },
+    { teamName: "Ctrl Alt Defeat", leader: "Ramya  M", rollNo: "2024PECIT254", dept: "IT", year: "III Year", section: "C", conqueredLands: ["Queue Gate"] },
+    { teamName: "Code vizzzz..", leader: "Arunapriya S", rollNo: "2025PECCS138", dept: "CSE", year: "II Year", section: "A", conqueredLands: ["Hash Table Isle"] },
+    { teamName: "Team Runtime error", leader: "Padmajaa S", rollNo: "2024PECCS379", dept: "CSE", year: "III Year", section: "E", conqueredLands: ["Bit Manipulation Shrine"] },
+    { teamName: "Archer queens", leader: "Ashwini S", rollNo: "2024PECCS136", dept: "CSE", year: "III Year", section: "A", conqueredLands: ["2 Pointers Pagoda"] },
+    { teamName: "Team Titans", leader: "Nambi GT", rollNo: "2024PECAI472", dept: "AI & DS", year: "III Year", section: "F", conqueredLands: ["Stack Citadel"] },
+    { teamName: "Triple Threat", leader: "Keerthana R", rollNo: "2024PECCS293", dept: "CSE", year: "III Year", section: "D", conqueredLands: ["Set Sanctuary"] },
+    { teamName: "THE FIRE CODERS", leader: "SAYANTANI BANERJEE", rollNo: "2024PECCS464", dept: "CSE", year: "III Year", section: "F", conqueredLands: ["Database Temple"] },
+    { teamName: "Omnipotent shadow", leader: "Abishek. B", rollNo: "2024PECEE167", dept: "EEE", year: "III Year", section: "B", conqueredLands: ["Pattern Tower"] },
+    { teamName: "Flycode", leader: "Jasmine banu D", rollNo: "2025PECCS261", dept: "CSE", year: "II Year", section: "C", conqueredLands: ["DFS Fortress"] },
+    { teamName: "dracarys", leader: "LOKESH S", rollNo: "2024PECIT504", dept: "IT", year: "III Year", section: "G", conqueredLands: ["Math Arena"] },
+    { teamName: "Alpha Algorithms", leader: "GOMATHI V", rollNo: "2024PECCS220", dept: "CSE", year: "III Year", section: "B", conqueredLands: ["Priority Queue Necropolis"] },
+    { teamName: "Black box", leader: "Pretheba.E", rollNo: "2024PECCS402", dept: "CSE", year: "III Year", section: "E", conqueredLands: ["Recursion Barracks"] },
+    { teamName: "Code warriers", leader: "Harini A", rollNo: "2024PECCS228", dept: "CSE", year: "III Year", section: "C", conqueredLands: ["BFS Ruins"] },
+    { teamName: "Digital Nemesis", leader: "M.Madhuri", rollNo: "2024PECCS353", dept: "CSE", year: "III Year", section: "E", conqueredLands: ["Backtracking Palace"] },
+    { teamName: "Code Warriors⚡", leader: "MANISHA H", rollNo: "2025PECCS343", dept: "CSE", year: "II Year", section: "D", conqueredLands: ["String Sanctum"] },
+    { teamName: "Sheesdiva", leader: "SAMEEHA S", rollNo: "2024PECCS448", dept: "CSE", year: "III Year", section: "F", conqueredLands: ["Linked List Fort"] },
+    { teamName: "Sangavi S", leader: "Sangavi S", rollNo: "2025PECCS472", dept: "CSE", year: "II Year", section: "F", conqueredLands: ["Matrix Shrine"] },
+    { teamName: "ByteForce", leader: "P Rachel Nishika", rollNo: "2024PECCS412", dept: "CSE", year: "III Year", section: "E", conqueredLands: ["Prefix & Suffix Realm"] },
+    { teamName: "Algoverse", leader: "Bina Y", rollNo: "2024PECCS153", dept: "CSE", year: "III Year", section: "A", conqueredLands: ["DP Monument"] },
+    { teamName: "AlgoRhythm", leader: "Prema Sahithi Aremanda", rollNo: "2024PECCS129", dept: "CSE", year: "III Year", section: "A", conqueredLands: ["Greedy Pillars"] },
+    { teamName: "Varshini S", leader: "Varshini S", rollNo: "2024PECCB224", dept: "CSBS", year: "III Year", section: "B", conqueredLands: ["Searching Pyramid"] },
+    { teamName: "HACKPIXEL", leader: "PRAVEEN RAJ E", rollNo: "2024PECEC354", dept: "ECE", year: "III Year", section: "E", conqueredLands: ["Array Realm"] }
+];
+
 // ── Final Standings ───────────────────────────────────────────────────
 export const overallData = [
     { teamName: "Phoneix", leader: "Varun S", rollNo: "2024PECCS645", dept: "CSE", year: "III Year", section: "I", conqueredLands: ["Mystery Land"] },
@@ -624,4 +653,5 @@ export const overallData = [
     { teamName: "Varshini S", leader: "Varshini S", rollNo: "2024PECCB224", dept: "CSBS", year: "III Year", section: "B", conqueredLands: ["Searching Pyramid"] },
     { teamName: "HACKPIXEL", leader: "PRAVEEN RAJ E", rollNo: "2024PECEC354", dept: "ECE", year: "III Year", section: "E", conqueredLands: ["Array Realm"] }
 ];
+
 

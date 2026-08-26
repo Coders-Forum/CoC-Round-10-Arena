@@ -42,6 +42,11 @@ export default function Admin() {
     phase1Data.forEach(t => { init[t.teamName] = []; });
     return init;
   });
+  const [phase3Map, setPhase3Map] = useState(() => {
+    const init = {};
+    phase1Data.forEach(t => { init[t.teamName] = []; });
+    return init;
+  });
   const [updatingResultsPhase, setUpdatingResultsPhase] = useState(false);
   const [eliminatedTeams, setEliminatedTeams] = useState([]);
   const [savingEliminations, setSavingEliminations] = useState(false);
@@ -250,6 +255,9 @@ export default function Admin() {
         if (data.phase2Conquests && Object.keys(data.phase2Conquests).length > 0) {
           setPhase2Map(prev => ({ ...prev, ...data.phase2Conquests }));
         }
+        if (data.phase3Conquests && Object.keys(data.phase3Conquests).length > 0) {
+          setPhase3Map(prev => ({ ...prev, ...data.phase3Conquests }));
+        }
       }
     } catch (err) {
       console.error("Failed to fetch conquests:", err);
@@ -316,7 +324,7 @@ export default function Admin() {
   };
 
 
-  // Update active results phase visibility (phase1 | phase2 | all)
+  // Update active results phase visibility (phase1 | phase2 | phase3 | all)
   const handleUpdateActiveResultsPhase = async (targetPhase) => {
     setUpdatingResultsPhase(true);
     setStatusMsg("");
@@ -336,9 +344,10 @@ export default function Admin() {
       if (res.ok && data.success) {
         setActiveResultsPhase(data.activeResultsPhase);
         const labelMap = {
-          phase1: "Phase 1 Only (Phase 2 & Final Winners Locked)",
-          phase2: "Phase 1 & Phase 2 (Final Winners Locked)",
-          all: "All Unlocked (Phase 1, Phase 2 & Final Winners Live)"
+          phase1: "Phase 1 Only (Phase 2, 3 & Final Winners Locked)",
+          phase2: "Phase 1 & Phase 2 (Phase 3 & Final Winners Locked)",
+          phase3: "Phase 1, 2 & Phase 3 (Final Winners Locked)",
+          all: "All Unlocked (Phase 1, 2, 3 & Final Winners Live)"
         };
         setStatusMsg(`🏆 Public Results visibility mode set to: ${labelMap[targetPhase] || targetPhase}`);
         setStatusType("success");
@@ -356,7 +365,8 @@ export default function Admin() {
 
   // Toggle land for selected team and selected phase
   const handleToggleTeamLand = (landName) => {
-    const setter = selectedPhaseForEditing === "phase2" ? setPhase2Map : setPhase1Map;
+    const setter = selectedPhaseForEditing === "phase3" ? setPhase3Map :
+                   selectedPhaseForEditing === "phase2" ? setPhase2Map : setPhase1Map;
     setter(prev => {
       const currentLands = prev[selectedTeamForResults] || [];
       const exists = currentLands.includes(landName);
@@ -370,7 +380,8 @@ export default function Admin() {
     setSavingConquests(true);
     setStatusMsg("");
 
-    const targetMap = selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
+    const targetMap = selectedPhaseForEditing === "phase3" ? phase3Map :
+                      selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
     const currentLands = targetMap[selectedTeamForResults] || [];
 
     try {
@@ -909,7 +920,7 @@ export default function Admin() {
                   color: activeResultsPhase === "all" ? "#86efac" : "#FFD700",
                   fontWeight: "800"
                 }}>
-                  PUBLIC VIEW: {activeResultsPhase === "phase1" ? "PHASE 1 ONLY (PHASE 2 & FINAL LOCKED)" : activeResultsPhase === "phase2" ? "PHASE 1 & 2 (FINAL LOCKED)" : "ALL UNLOCKED 🏆"}
+                  PUBLIC VIEW: {activeResultsPhase === "phase1" ? "PHASE 1 ONLY (PHASE 2, 3 & FINAL LOCKED)" : activeResultsPhase === "phase2" ? "PHASE 1 & 2 (PHASE 3 & FINAL LOCKED)" : activeResultsPhase === "phase3" ? "PHASE 1, 2 & 3 (FINAL LOCKED)" : "ALL UNLOCKED 🏆"}
                 </span>
               </div>
 
@@ -921,7 +932,7 @@ export default function Admin() {
                   disabled={updatingResultsPhase || activeResultsPhase === "phase1"}
                   style={{
                     flex: 1,
-                    minWidth: "180px",
+                    minWidth: "150px",
                     padding: "12px 14px",
                     borderRadius: "8px",
                     background: activeResultsPhase === "phase1" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
@@ -940,7 +951,7 @@ export default function Admin() {
                   disabled={updatingResultsPhase || activeResultsPhase === "phase2"}
                   style={{
                     flex: 1,
-                    minWidth: "180px",
+                    minWidth: "150px",
                     padding: "12px 14px",
                     borderRadius: "8px",
                     background: activeResultsPhase === "phase2" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
@@ -951,7 +962,26 @@ export default function Admin() {
                     cursor: updatingResultsPhase || activeResultsPhase === "phase2" ? "default" : "pointer"
                   }}
                 >
-                  🔓 PHASE 1 & PHASE 2
+                  🔓 PHASE 1 & 2
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateActiveResultsPhase("phase3")}
+                  disabled={updatingResultsPhase || activeResultsPhase === "phase3"}
+                  style={{
+                    flex: 1,
+                    minWidth: "150px",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    background: activeResultsPhase === "phase3" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
+                    color: activeResultsPhase === "phase3" ? "#000" : "#9CA3AF",
+                    border: "1px solid rgba(255,196,81,0.3)",
+                    fontWeight: "800",
+                    fontSize: "12px",
+                    cursor: updatingResultsPhase || activeResultsPhase === "phase3" ? "default" : "pointer"
+                  }}
+                >
+                  🔓 PHASE 1, 2 & 3
                 </button>
                 <button
                   type="button"
@@ -959,7 +989,7 @@ export default function Admin() {
                   disabled={updatingResultsPhase || activeResultsPhase === "all"}
                   style={{
                     flex: 1,
-                    minWidth: "180px",
+                    minWidth: "150px",
                     padding: "12px 14px",
                     borderRadius: "8px",
                     background: activeResultsPhase === "all" ? "#22c55e" : "rgba(17, 24, 39, 0.7)",
@@ -1012,6 +1042,22 @@ export default function Admin() {
                   >
                     PHASE 2 LANDS
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPhaseForEditing("phase3")}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      background: selectedPhaseForEditing === "phase3" ? "rgba(255, 196, 81, 0.25)" : "rgba(0,0,0,0.3)",
+                      border: `1px solid ${selectedPhaseForEditing === "phase3" ? "#FFC451" : "rgba(255,255,255,0.1)"}`,
+                      color: selectedPhaseForEditing === "phase3" ? "#FFD700" : "#9CA3AF",
+                      fontWeight: "800",
+                      fontSize: "11px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    PHASE 3 LANDS
+                  </button>
                 </div>
               </div>
 
@@ -1037,7 +1083,7 @@ export default function Admin() {
                   }}
                 >
                   {phase1Data.map(t => {
-                    const targetMap = selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
+                    const targetMap = selectedPhaseForEditing === "phase3" ? phase3Map : selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
                     const count = (targetMap[t.teamName] || []).length;
                     return (
                       <option key={t.teamName} value={t.teamName}>
@@ -1079,7 +1125,7 @@ export default function Admin() {
                 overflowY: "auto"
               }}>
                 {round1Lands.map(land => {
-                  const targetMap = selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
+                  const targetMap = selectedPhaseForEditing === "phase3" ? phase3Map : selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
                   const isChecked = (targetMap[selectedTeamForResults] || []).includes(land.landName);
                   return (
                     <label

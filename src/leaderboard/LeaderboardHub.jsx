@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import RankedLeaderboard from "./RankedLeaderboard.jsx"
-import { round0Data, round1Data, phase1Data, phase2Data, overallData } from "./leaderboardData.js"
+import { round0Data, round1Data, phase1Data, phase2Data, phase3Data, overallData } from "./leaderboardData.js"
 import { getLandingPageUrl } from "../config/contestConfig.js"
 
 const FONT = "'Clash', 'Clash Display', sans-serif"
@@ -12,7 +12,8 @@ const RESULTS_SUSPENDED = false
 const TABS = [
     { key: "phase1", label: "Phase 1", data: phase1Data, subtitle: "Round 2 · Phase 1 Standings" },
     { key: "phase2", label: "Phase 2", data: phase2Data, subtitle: "Round 2 · Phase 2 Standings" },
-    { key: "overall", label: "Final Winners", icon: "🏆", data: overallData, subtitle: "Round 2 · Grand Champions" }
+    { key: "phase3", label: "Phase 3", data: phase3Data, subtitle: "Round 2 · Phase 3 Standings" },
+    { key: "overall", label: "Final Winners", icon: "🏆", data: overallData, subtitle: "Round 2 · Grand Champions — Top 5 Finalists" }
 ]
 
 export default function LeaderboardHub() {
@@ -21,6 +22,7 @@ export default function LeaderboardHub() {
     const [overallConquests, setOverallConquests] = useState({})
     const [phase1Conquests, setPhase1Conquests] = useState({})
     const [phase2Conquests, setPhase2Conquests] = useState({})
+    const [phase3Conquests, setPhase3Conquests] = useState({})
     const [eliminatedTeams, setEliminatedTeams] = useState([])
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < 768 : false
@@ -48,6 +50,7 @@ export default function LeaderboardHub() {
                     if (data.conquests) setOverallConquests(data.conquests);
                     if (data.phase1Conquests) setPhase1Conquests(data.phase1Conquests);
                     if (data.phase2Conquests) setPhase2Conquests(data.phase2Conquests);
+                    if (data.phase3Conquests) setPhase3Conquests(data.phase3Conquests);
                 }
             })
             .catch(() => {})
@@ -55,20 +58,30 @@ export default function LeaderboardHub() {
 
     const isTabUnlocked = (tabKey) => {
         if (tabKey === "phase1") return true;
-        if (tabKey === "phase2") return activeResultsPhase === "phase2" || activeResultsPhase === "all";
+        if (tabKey === "phase2") return ["phase2", "phase3", "all"].includes(activeResultsPhase);
+        if (tabKey === "phase3") return ["phase3", "all"].includes(activeResultsPhase);
         if (tabKey === "overall") return activeResultsPhase === "all";
         return true;
     }
 
     const activeEntries = (current.data || []).map(entry => {
         const targetMap = activeTab === "phase1" ? phase1Conquests :
-                          activeTab === "phase2" ? phase2Conquests : overallConquests;
+                          activeTab === "phase2" ? phase2Conquests :
+                          activeTab === "phase3" ? phase3Conquests : overallConquests;
         const isEliminated = eliminatedTeams.includes(entry.teamName);
-        if (targetMap && targetMap[entry.teamName]) {
-            return { ...entry, conqueredLands: targetMap[entry.teamName], isEliminated }
-        }
-        return { ...entry, isEliminated }
-    })
+        const conqueredLands = targetMap && targetMap[entry.teamName] ? targetMap[entry.teamName] : (entry.conqueredLands || []);
+        return { ...entry, conqueredLands, isEliminated };
+    }).sort((a, b) => {
+        // PUSH ELIMINATED TEAMS TO THE BOTTOM OF THE LIST!
+        if (a.isEliminated && !b.isEliminated) return 1;
+        if (!a.isEliminated && b.isEliminated) return -1;
+
+        // Sort active teams by total conquered lands descending
+        const aCount = (a.conqueredLands || []).length;
+        const bCount = (b.conqueredLands || []).length;
+        return bCount - aCount;
+    });
+
 
 
 
@@ -412,6 +425,7 @@ export default function LeaderboardHub() {
                                 subtitle={current.subtitle}
                                 entries={activeEntries}
                                 showDivider={activeTab === "round0" || activeTab === "round1"}
+                                showTop5Divider={activeTab === "overall"}
                             />
                         ) : (
                             <div style={{
