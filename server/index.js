@@ -64,9 +64,6 @@ app.use(cors({
   ],
 }));
 
-// Handle preflight
-app.options("*", cors());
-
 app.use(express.json({ limit: "500kb" }));
 
 app.use(rateLimit({
