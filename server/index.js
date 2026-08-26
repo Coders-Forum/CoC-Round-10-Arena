@@ -31,91 +31,38 @@ if (supabase) {
 // ═══════════════════════════════════════════════════════════════
 
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
-      upgradeInsecureRequests: [],
-    },
-  },
-  frameguard: { action: "deny" },
-  hsts: { maxAge: 31536000 },
-  noSniff: true,
-  xssFilter: true,
-  referrerPolicy: { policy: "no-referrer" },
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: false,
 }));
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:4173",
-  "http://localhost:3000",
-  "http://127.0.0.1:5173",
-  "http://127.0.0.1:5174",
-  "https://codersforum.netlify.app",
-  "https://kevincodez-ai.github.io",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow same-origin, localhost, all vercel.app & github.io domains, or explicit FRONTEND_URL
-    let isAllowedDomain = false;
-    try {
-      if (origin) {
-        const hostname = new URL(origin).hostname;
-        isAllowedDomain = /\.vercel\.app$/.test(hostname) || /\.github\.io$/.test(hostname);
-      }
-    } catch {
-      isAllowedDomain = false;
-    }
-
-    if (
-      !origin ||
-      isAllowedDomain ||
-      allowedOrigins.includes(origin) ||
-      /^https?:\/\/(localhost|127\.0\.0\.1)(:[0-9]+)?$/.test(origin) ||
-      (process.env.VERCEL_URL && origin.includes(process.env.VERCEL_URL))
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"), false);
-    }
-  },
-  methods: ["POST", "GET", "OPTIONS", "PATCH"],
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
+    "Authorization",
     "X-Requested-With",
     "X-Request-Nonce",
     "X-Session-Token",
     "X-Admin-Token"
   ],
-  credentials: false,
 }));
 
-app.use(express.json({ limit: "10kb" }));
+// Handle preflight
+app.options("*", cors());
+
+app.use(express.json({ limit: "500kb" }));
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100000,             // Ultra-high headroom for load testing and contest traffic
+  max: 100000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many requests. Try again later." },
 }));
 
-app.use((req, res, next) => {
-  if (req.method === "POST" || req.method === "PATCH") {
-    if (req.headers["x-requested-with"] !== "XMLHttpRequest") {
-      return res.status(403).json({ success: false, message: "Forbidden." });
-    }
-  }
-  next();
-});
+
 
 // ═══════════════════════════════════════════════════════════════
 //  HELPER FUNCTIONS

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getLandingPageUrl, CONTEST_CONFIG } from "../config/contestConfig";
+import { getLandingPageUrl, CONTEST_CONFIG, getApiUrl } from "../config/contestConfig";
 import { phase1Data } from "../leaderboard/leaderboardData";
 
 function getStoredAdminToken() {
@@ -63,9 +63,7 @@ export default function Admin() {
   const [statusMsg, setStatusMsg] = useState("");
   const [statusType, setStatusType] = useState(""); // "success" | "error" | "info"
 
-  const apiUrl = import.meta.env.VITE_API_URL !== undefined
-    ? import.meta.env.VITE_API_URL
-    : (import.meta.env.DEV ? "http://localhost:5000" : "");
+  const apiUrl = getApiUrl();
 
   const round1Lands = CONTEST_CONFIG?.round1?.lands || [];
 

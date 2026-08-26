@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import RankedLeaderboard from "./RankedLeaderboard.jsx"
 import { phase1Data, phase2Data, phase3Data } from "./leaderboardData.js"
-import { getLandingPageUrl } from "../config/contestConfig.js"
+import { getLandingPageUrl, getApiUrl } from "../config/contestConfig.js"
 
 const FONT = "'Clash', 'Clash Display', sans-serif"
 
@@ -230,9 +230,7 @@ export default function LeaderboardHub() {
     }, [])
 
     useEffect(() => {
-        const apiUrl = import.meta.env.VITE_API_URL !== undefined
-            ? import.meta.env.VITE_API_URL
-            : (import.meta.env.DEV ? "http://localhost:5000" : "");
+        const apiUrl = getApiUrl();
 
         fetch(`${apiUrl}/api/results/conquests`)
             .then(r => r.json())

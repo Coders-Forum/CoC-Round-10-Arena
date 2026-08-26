@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { SESSION_KEY, SESSION_TS_KEY, TEAM_DATA_KEY } from "../utils/sessionSecurity.js";
-import { validateContestParams } from "../config/contestConfig.js";
+import { validateContestParams, getApiUrl } from "../config/contestConfig.js";
 
 // ─── Simple, reliable login for contest day ───────────────────────
 // No fingerprinting | No per-browser lockouts | No complex throttles
@@ -34,9 +34,7 @@ export default function Login() {
       return;
     }
 
-    const apiBase = import.meta.env.VITE_API_URL !== undefined
-      ? import.meta.env.VITE_API_URL
-      : (import.meta.env.DEV ? "http://localhost:5000" : "");
+    const apiBase = getApiUrl();
 
     fetch(`${apiBase}/api/contest/status`)
       .then(r => r.json())
@@ -88,9 +86,7 @@ export default function Login() {
     setLoading(true);
     msg("Verifying credentials…", false);
 
-    const apiBase = import.meta.env.VITE_API_URL !== undefined
-      ? import.meta.env.VITE_API_URL
-      : (import.meta.env.DEV ? "http://localhost:5000" : "");
+    const apiBase = getApiUrl();
 
     try {
       const res = await fetch(`${apiBase}/api/login`, {

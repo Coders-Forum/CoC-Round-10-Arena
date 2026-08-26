@@ -1,7 +1,7 @@
 import { Suspense, useState, useEffect, useRef } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { clearSession, SESSION_KEY, SESSION_TS_KEY, TEAM_DATA_KEY } from "../utils/sessionSecurity.js"
-import { getLandContestUrl, validateContestParams, CONTEST_CONFIG, getLandingPageUrl } from "../config/contestConfig.js"
+import { getLandContestUrl, validateContestParams, CONTEST_CONFIG, getLandingPageUrl, getApiUrl } from "../config/contestConfig.js"
 import { useGLTF } from "@react-three/drei"
 import VolcanoLand from "../lands/VolcanoLand.jsx"
 import SnowLand from "../lands/SnowLand.jsx"
@@ -765,9 +765,7 @@ export default function Scene() {
         const { queryString } = validateContestParams(location.search)
 
         if (!token && !localBypass && !accessState.bypassLogin) {
-            const apiUrl = import.meta.env.VITE_API_URL !== undefined
-                ? import.meta.env.VITE_API_URL
-                : (import.meta.env.DEV ? "http://localhost:5000" : "");
+            const apiUrl = getApiUrl();
 
             fetch(`${apiUrl}/api/contest/status`)
                 .then(r => r.json())
@@ -792,9 +790,7 @@ export default function Scene() {
         async function verifyStageAccess() {
             const token = sessionStorage.getItem(SESSION_KEY)
             const { round, phase } = validateContestParams(location.search)
-            const apiUrl = import.meta.env.VITE_API_URL !== undefined
-                ? import.meta.env.VITE_API_URL
-                : (import.meta.env.DEV ? "http://localhost:5000" : "");
+            const apiUrl = getApiUrl();
 
             try {
                 const res = await fetch(`${apiUrl}/api/contest/verify-access`, {

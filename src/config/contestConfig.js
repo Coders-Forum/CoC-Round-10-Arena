@@ -22,8 +22,23 @@
  *  11. pagoda   (2 Pointers Pagoda)      24. cemetery   (Prefix & Suffix Realm)
  *  12. pedestal (Sliding Window Pedestal)25. pillars    (Greedy Pillars)
  *  13. cathedral(Stack Citadel)
- * ═══════════════════════════════════════════════════════════════════
+/**
+ * Resolves the Backend API URL safely across local dev & production cloud deployments.
  */
+export function getApiUrl() {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && typeof envUrl === "string" && envUrl.trim() !== "") {
+    const trimmed = envUrl.trim().replace(/\/$/, "");
+    if (!import.meta.env.DEV && (trimmed.includes("localhost") || trimmed.includes("127.0.0.1"))) {
+      return "";
+    }
+    return trimmed;
+  }
+  if (import.meta.env.DEV) {
+    return "http://localhost:5000";
+  }
+  return "";
+}
 
 export const CONTEST_CONFIG = {
   // ── ROUND 0 CONFIGURATION (GFG — External) ────────────────────────
