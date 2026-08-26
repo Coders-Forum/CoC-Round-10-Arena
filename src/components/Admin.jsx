@@ -30,16 +30,23 @@ export default function Admin() {
   const [bypassLogin, setBypassLogin] = useState(false);
   const [togglingBypass, setTogglingBypass] = useState(false);
   const [selectedTeamForResults, setSelectedTeamForResults] = useState("Phoneix");
-  const [teamConquestsMap, setTeamConquestsMap] = useState(() => {
-    const initial = {};
-    phase1Data.forEach(t => {
-      initial[t.teamName] = t.conqueredLands || [];
-    });
-    return initial;
+  const [activeResultsPhase, setActiveResultsPhase] = useState("phase1");
+  const [selectedPhaseForEditing, setSelectedPhaseForEditing] = useState("phase1");
+  const [phase1Map, setPhase1Map] = useState(() => {
+    const init = {};
+    phase1Data.forEach(t => { init[t.teamName] = t.conqueredLands || []; });
+    return init;
   });
+  const [phase2Map, setPhase2Map] = useState(() => {
+    const init = {};
+    phase1Data.forEach(t => { init[t.teamName] = []; });
+    return init;
+  });
+  const [updatingResultsPhase, setUpdatingResultsPhase] = useState(false);
   const [savingConquests, setSavingConquests] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingLands, setSavingLands] = useState(false);
+
 
   const [landFilter, setLandFilter] = useState("");
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
@@ -226,13 +233,19 @@ export default function Admin() {
     }
   };
 
-  // Fetch live conquests from backend
+  // Fetch live conquests & active results phase from backend
   const fetchConquests = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/results/conquests`, { cache: "no-store" });
       const data = await res.json();
-      if (data.success && data.conquests && Object.keys(data.conquests).length > 0) {
-        setTeamConquestsMap(prev => ({ ...prev, ...data.conquests }));
+      if (data.success) {
+        if (data.activeResultsPhase) setActiveResultsPhase(data.activeResultsPhase);
+        if (data.phase1Conquests && Object.keys(data.phase1Conquests).length > 0) {
+          setPhase1Map(prev => ({ ...prev, ...data.phase1Conquests }));
+        }
+        if (data.phase2Conquests && Object.keys(data.phase2Conquests).length > 0) {
+          setPhase2Map(prev => ({ ...prev, ...data.phase2Conquests }));
+        }
       }
     } catch (err) {
       console.error("Failed to fetch conquests:", err);
@@ -243,9 +256,48 @@ export default function Admin() {
     fetchConquests();
   }, [fetchConquests]);
 
-  // Toggle land for selected team in Results Manager
+  // Update active results phase visibility (phase1 | phase2 | all)
+  const handleUpdateActiveResultsPhase = async (targetPhase) => {
+    setUpdatingResultsPhase(true);
+    setStatusMsg("");
+
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/results/active-phase`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ activeResultsPhase: targetPhase }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActiveResultsPhase(data.activeResultsPhase);
+        const labelMap = {
+          phase1: "Phase 1 Only (Phase 2 & Final Winners Locked)",
+          phase2: "Phase 1 & Phase 2 (Final Winners Locked)",
+          all: "All Unlocked (Phase 1, Phase 2 & Final Winners Live)"
+        };
+        setStatusMsg(`🏆 Public Results visibility mode set to: ${labelMap[targetPhase] || targetPhase}`);
+        setStatusType("success");
+      } else {
+        setStatusMsg(data.message || "Failed to update results visibility mode.");
+        setStatusType("error");
+      }
+    } catch (err) {
+      setStatusMsg("Failed to connect to backend: " + err.message);
+      setStatusType("error");
+    } finally {
+      setUpdatingResultsPhase(false);
+    }
+  };
+
+  // Toggle land for selected team and selected phase
   const handleToggleTeamLand = (landName) => {
-    setTeamConquestsMap(prev => {
+    const setter = selectedPhaseForEditing === "phase2" ? setPhase2Map : setPhase1Map;
+    setter(prev => {
       const currentLands = prev[selectedTeamForResults] || [];
       const exists = currentLands.includes(landName);
       const updated = exists ? currentLands.filter(l => l !== landName) : [...currentLands, landName];
@@ -253,12 +305,13 @@ export default function Admin() {
     });
   };
 
-  // Save team conquered lands to backend
+  // Save team conquered lands for selected phase to backend
   const handleSaveTeamConquests = async () => {
     setSavingConquests(true);
     setStatusMsg("");
 
-    const currentLands = teamConquestsMap[selectedTeamForResults] || [];
+    const targetMap = selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
+    const currentLands = targetMap[selectedTeamForResults] || [];
 
     try {
       const res = await fetch(`${apiUrl}/api/admin/teams/conquered-lands`, {
@@ -270,13 +323,14 @@ export default function Admin() {
         },
         body: JSON.stringify({
           teamName: selectedTeamForResults,
+          phase: selectedPhaseForEditing,
           conqueredLands: currentLands,
         }),
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
-        setStatusMsg(`🏆 Saved conquered lands for team "${selectedTeamForResults}"! (${currentLands.length} lands)`);
+        setStatusMsg(`🏆 Saved ${selectedPhaseForEditing.toUpperCase()} conquered lands for team "${selectedTeamForResults}"! (${currentLands.length} lands)`);
         setStatusType("success");
       } else {
         setStatusMsg(data.message || "Failed to save team conquests.");
@@ -770,28 +824,138 @@ export default function Admin() {
             </div>
 
             {/* ══════════════════════════════════════════════════════════ */}
-            {/* 🏆 DYNAMIC RESULTS & TEAM CONQUEST MANAGER                */}
+            {/* 🏆 DYNAMIC RESULTS & PHASE ACTIVATION MANAGER            */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div style={{
               borderTop: "1px solid rgba(255, 196, 81, 0.25)",
               paddingTop: "24px",
               marginBottom: "32px"
             }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
                 <div>
                   <h3 style={{ fontSize: "15px", color: "#FFC451", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "800", margin: 0 }}>
-                    🏆 Dynamic Results & Team Conquest Manager
+                    🏆 Results Phase Activation & Lock Control
                   </h3>
                   <div style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "4px" }}>
-                    Select a team and check/uncheck conquered lands to dynamically update the live Results Page (`/results`).
+                    Control which standings are public on `/results`. Upcoming phases remain locked until activated.
                   </div>
                 </div>
-                <span style={{ fontSize: "11px", padding: "4px 12px", borderRadius: "100px", background: "rgba(255, 196, 81, 0.15)", border: "1px solid #FFC451", color: "#FFD700", fontWeight: "800" }}>
-                  25 Qualified Teams
+                <span style={{
+                  fontSize: "11px",
+                  padding: "4px 12px",
+                  borderRadius: "100px",
+                  background: activeResultsPhase === "all" ? "rgba(34, 197, 94, 0.2)" : "rgba(255, 196, 81, 0.15)",
+                  border: `1px solid ${activeResultsPhase === "all" ? "#22c55e" : "#FFC451"}`,
+                  color: activeResultsPhase === "all" ? "#86efac" : "#FFD700",
+                  fontWeight: "800"
+                }}>
+                  PUBLIC VIEW: {activeResultsPhase === "phase1" ? "PHASE 1 ONLY (PHASE 2 & FINAL LOCKED)" : activeResultsPhase === "phase2" ? "PHASE 1 & 2 (FINAL LOCKED)" : "ALL UNLOCKED 🏆"}
                 </span>
               </div>
 
-              {/* Team Dropdown Selector */}
+              {/* Phase Activation Buttons */}
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "24px" }}>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateActiveResultsPhase("phase1")}
+                  disabled={updatingResultsPhase || activeResultsPhase === "phase1"}
+                  style={{
+                    flex: 1,
+                    minWidth: "180px",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    background: activeResultsPhase === "phase1" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
+                    color: activeResultsPhase === "phase1" ? "#000" : "#9CA3AF",
+                    border: "1px solid rgba(255,196,81,0.3)",
+                    fontWeight: "800",
+                    fontSize: "12px",
+                    cursor: updatingResultsPhase || activeResultsPhase === "phase1" ? "default" : "pointer"
+                  }}
+                >
+                  🔒 PHASE 1 ONLY
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateActiveResultsPhase("phase2")}
+                  disabled={updatingResultsPhase || activeResultsPhase === "phase2"}
+                  style={{
+                    flex: 1,
+                    minWidth: "180px",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    background: activeResultsPhase === "phase2" ? "#FFC451" : "rgba(17, 24, 39, 0.7)",
+                    color: activeResultsPhase === "phase2" ? "#000" : "#9CA3AF",
+                    border: "1px solid rgba(255,196,81,0.3)",
+                    fontWeight: "800",
+                    fontSize: "12px",
+                    cursor: updatingResultsPhase || activeResultsPhase === "phase2" ? "default" : "pointer"
+                  }}
+                >
+                  🔓 PHASE 1 & PHASE 2
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateActiveResultsPhase("all")}
+                  disabled={updatingResultsPhase || activeResultsPhase === "all"}
+                  style={{
+                    flex: 1,
+                    minWidth: "180px",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    background: activeResultsPhase === "all" ? "#22c55e" : "rgba(17, 24, 39, 0.7)",
+                    color: activeResultsPhase === "all" ? "#000" : "#9CA3AF",
+                    border: "1px solid rgba(34,197,94,0.3)",
+                    fontWeight: "800",
+                    fontSize: "12px",
+                    cursor: updatingResultsPhase || activeResultsPhase === "all" ? "default" : "pointer"
+                  }}
+                >
+                  🏆 UNLOCK ALL (FINAL WINNERS)
+                </button>
+              </div>
+
+              {/* Phase-Wise Team Conquest Editor Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "12px" }}>
+                <h4 style={{ fontSize: "14px", color: "#E5E7EB", margin: 0, fontWeight: "700" }}>
+                  ⚔️ Edit Team Conquered Lands by Phase
+                </h4>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPhaseForEditing("phase1")}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      background: selectedPhaseForEditing === "phase1" ? "rgba(255, 196, 81, 0.25)" : "rgba(0,0,0,0.3)",
+                      border: `1px solid ${selectedPhaseForEditing === "phase1" ? "#FFC451" : "rgba(255,255,255,0.1)"}`,
+                      color: selectedPhaseForEditing === "phase1" ? "#FFD700" : "#9CA3AF",
+                      fontWeight: "800",
+                      fontSize: "11px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    PHASE 1 LANDS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPhaseForEditing("phase2")}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      background: selectedPhaseForEditing === "phase2" ? "rgba(255, 196, 81, 0.25)" : "rgba(0,0,0,0.3)",
+                      border: `1px solid ${selectedPhaseForEditing === "phase2" ? "#FFC451" : "rgba(255,255,255,0.1)"}`,
+                      color: selectedPhaseForEditing === "phase2" ? "#FFD700" : "#9CA3AF",
+                      fontWeight: "800",
+                      fontSize: "11px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    PHASE 2 LANDS
+                  </button>
+                </div>
+              </div>
+
+              {/* Team Dropdown Selector & Save Button */}
               <div style={{ marginBottom: "16px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
                 <label style={{ fontSize: "13px", fontWeight: "700", color: "#E5E7EB" }}>
                   Select Team:
@@ -812,13 +976,18 @@ export default function Admin() {
                     outline: "none"
                   }}
                 >
-                  {phase1Data.map(t => (
-                    <option key={t.teamName} value={t.teamName}>
-                      {t.teamName} ({ (teamConquestsMap[t.teamName] || []).length } Lands)
-                    </option>
-                  ))}
+                  {phase1Data.map(t => {
+                    const targetMap = selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
+                    const count = (targetMap[t.teamName] || []).length;
+                    return (
+                      <option key={t.teamName} value={t.teamName}>
+                        {t.teamName} ({count} Lands in {selectedPhaseForEditing.toUpperCase()})
+                      </option>
+                    );
+                  })}
                 </select>
                 <button
+                  type="button"
                   onClick={handleSaveTeamConquests}
                   disabled={savingConquests}
                   style={{
@@ -833,7 +1002,7 @@ export default function Admin() {
                     boxShadow: "0 0 15px rgba(255,196,81,0.4)"
                   }}
                 >
-                  {savingConquests ? "SAVING..." : "SAVE TEAM CONQUESTS ⚡"}
+                  {savingConquests ? "SAVING..." : `SAVE ${selectedPhaseForEditing.toUpperCase()} LANDS ⚡`}
                 </button>
               </div>
 
@@ -850,7 +1019,8 @@ export default function Admin() {
                 overflowY: "auto"
               }}>
                 {round1Lands.map(land => {
-                  const isChecked = (teamConquestsMap[selectedTeamForResults] || []).includes(land.landName);
+                  const targetMap = selectedPhaseForEditing === "phase2" ? phase2Map : phase1Map;
+                  const isChecked = (targetMap[selectedTeamForResults] || []).includes(land.landName);
                   return (
                     <label
                       key={land.landId}
@@ -870,7 +1040,7 @@ export default function Admin() {
                       <input
                         type="checkbox"
                         checked={isChecked}
-                        onChange={() => {}} // Handled by parent label onClick
+                        onChange={() => {}}
                         style={{ accentColor: "#FFC451", transform: "scale(1.2)" }}
                       />
                       <span style={{ fontSize: "12px", fontWeight: isChecked ? "700" : "500", color: isChecked ? "#FFD700" : "#D1D5DB" }}>
@@ -881,6 +1051,7 @@ export default function Admin() {
                 })}
               </div>
             </div>
+
 
 
             {/* ══════════════════════════════════════════════════════════ */}

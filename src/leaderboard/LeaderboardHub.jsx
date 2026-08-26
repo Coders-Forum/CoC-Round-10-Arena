@@ -17,7 +17,10 @@ const TABS = [
 
 export default function LeaderboardHub() {
     const [activeTab, setActiveTab] = useState("phase1")
-    const [liveConquests, setLiveConquests] = useState({})
+    const [activeResultsPhase, setActiveResultsPhase] = useState("phase1")
+    const [overallConquests, setOverallConquests] = useState({})
+    const [phase1Conquests, setPhase1Conquests] = useState({})
+    const [phase2Conquests, setPhase2Conquests] = useState({})
     const [isSmallScreen, setIsSmallScreen] = useState(
         typeof window !== "undefined" ? window.innerWidth < 768 : false
     )
@@ -38,19 +41,32 @@ export default function LeaderboardHub() {
         fetch(`${apiUrl}/api/results/conquests`)
             .then(r => r.json())
             .then(data => {
-                if (data.success && data.conquests) {
-                    setLiveConquests(data.conquests)
+                if (data.success) {
+                    if (data.activeResultsPhase) setActiveResultsPhase(data.activeResultsPhase);
+                    if (data.conquests) setOverallConquests(data.conquests);
+                    if (data.phase1Conquests) setPhase1Conquests(data.phase1Conquests);
+                    if (data.phase2Conquests) setPhase2Conquests(data.phase2Conquests);
                 }
             })
             .catch(() => {})
     }, [])
 
+    const isTabUnlocked = (tabKey) => {
+        if (tabKey === "phase1") return true;
+        if (tabKey === "phase2") return activeResultsPhase === "phase2" || activeResultsPhase === "all";
+        if (tabKey === "overall") return activeResultsPhase === "all";
+        return true;
+    }
+
     const activeEntries = (current.data || []).map(entry => {
-        if (liveConquests[entry.teamName]) {
-            return { ...entry, conqueredLands: liveConquests[entry.teamName] }
+        const targetMap = activeTab === "phase1" ? phase1Conquests :
+                          activeTab === "phase2" ? phase2Conquests : overallConquests;
+        if (targetMap && targetMap[entry.teamName]) {
+            return { ...entry, conqueredLands: targetMap[entry.teamName] }
         }
         return entry
     })
+
 
 
     const btnStyle = (active) => ({
@@ -367,25 +383,56 @@ export default function LeaderboardHub() {
                             border: "1px solid rgba(255, 196, 81, 0.15)",
                             backdropFilter: "blur(10px)"
                         }}>
-                            {TABS.map((tab) => (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => setActiveTab(tab.key)}
-                                    style={btnStyle(tab.key === activeTab)}
-                                >
-                                    {tab.icon && <span>{tab.icon}</span>}
-                                    <span>{tab.label}</span>
-                                </button>
-                            ))}
+                            {TABS.map((tab) => {
+                                const unlocked = isTabUnlocked(tab.key);
+                                return (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setActiveTab(tab.key)}
+                                        style={{
+                                            ...btnStyle(tab.key === activeTab),
+                                            opacity: unlocked ? 1 : 0.75,
+                                        }}
+                                    >
+                                        <span>{unlocked ? (tab.icon || "") : "🔒"}</span>
+                                        <span>{tab.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
 
-                        {/* Active Tab Leaderboard Table */}
-                        <RankedLeaderboard
-                            title={current.label}
-                            subtitle={current.subtitle}
-                            entries={activeEntries}
-                            showDivider={activeTab === "round0" || activeTab === "round1"}
-                        />
+                        {/* Active Tab Content: Leaderboard Table or Locked Banner */}
+                        {isTabUnlocked(activeTab) ? (
+                            <RankedLeaderboard
+                                title={current.label}
+                                subtitle={current.subtitle}
+                                entries={activeEntries}
+                                showDivider={activeTab === "round0" || activeTab === "round1"}
+                            />
+                        ) : (
+                            <div style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "60px 20px",
+                                background: "rgba(17, 24, 39, 0.6)",
+                                borderRadius: "20px",
+                                border: "1px solid rgba(255, 196, 81, 0.2)",
+                                maxWidth: "540px",
+                                margin: "20px auto 60px auto",
+                                textAlign: "center"
+                            }}>
+                                <div style={{ fontSize: "48px", marginBottom: "16px" }}>🔒</div>
+                                <h2 style={{ fontSize: "20px", color: "#FFC451", margin: "0 0 8px 0", letterSpacing: "1px", fontWeight: "800" }}>
+                                    {current.label.toUpperCase()} STANDINGS LOCKED
+                                </h2>
+                                <p style={{ color: "#9CA3AF", fontSize: "13px", lineHeight: "1.6", margin: 0, maxWidth: "420px" }}>
+                                    Official standings for this phase are currently locked. Results will be declared live by the organizers once the phase concludes.
+                                </p>
+                            </div>
+                        )}
+
 
                     </>
                 )}

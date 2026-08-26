@@ -763,36 +763,57 @@ app.all(["/admin/contest/bypass-login", "/api/admin/contest/bypass-login", "/api
 
 // ═══════════════════════════════════════════════════════════════
 //  DYNAMIC TEAM CONQUESTS & RESULTS MANAGEMENT API
-//  — RAM cache (30s TTL) backed by Supabase teams.conquered_land
-//  — Survives cold starts: warm from DB on every cache miss
+//  — RAM cache (30s TTL) backed by Supabase teams & contest_state
+//  — Supports Phase 1, Phase 2, and Final Winners activation & locking
 // ═══════════════════════════════════════════════════════════════
-let memoryTeamConquests = {};      // { [teamName]: string[] }
+let memoryActiveResultsPhase = "phase1"; // "phase1" | "phase2" | "all"
+let memoryTeamConquests = {};           // { [teamName]: string[] } (overall merged)
+let memoryPhase1Conquests = {};         // { [teamName]: string[] }
+let memoryPhase2Conquests = {};         // { [teamName]: string[] }
 let conquestsCacheExpiresAt = 0;
 const CONQUESTS_CACHE_TTL = 30 * 1000; // 30 seconds
 
 async function loadTeamConquestsFromDB() {
   if (!supabase) return;
   try {
-    const { data, error } = await supabase
-      .from("teams")
-      .select("team_name, conquered_land")
-      .eq("status", "active");
+    const { data: stateData } = await supabase
+      .from("contest_state")
+      .select("active_results_phase")
+      .eq("id", "current")
+      .maybeSingle();
 
-    if (error) {
-      console.error("[Supabase Conquests Load Error]:", error.message);
-      return;
+    if (stateData && stateData.active_results_phase) {
+      memoryActiveResultsPhase = stateData.active_results_phase;
     }
 
-    if (Array.isArray(data)) {
-      const fresh = {};
+    const { data, error } = await supabase
+      .from("teams")
+      .select("team_name, conquered_land, phase1_lands, phase2_lands")
+      .eq("status", "active");
+
+    if (!error && Array.isArray(data)) {
+      const freshOverall = {};
+      const freshP1 = {};
+      const freshP2 = {};
+
       for (const row of data) {
-        if (row.team_name && Array.isArray(row.conquered_land) && row.conquered_land.length > 0) {
-          fresh[row.team_name] = row.conquered_land;
+        if (row.team_name) {
+          if (Array.isArray(row.conquered_land) && row.conquered_land.length > 0) {
+            freshOverall[row.team_name] = row.conquered_land;
+          }
+          if (Array.isArray(row.phase1_lands) && row.phase1_lands.length > 0) {
+            freshP1[row.team_name] = row.phase1_lands;
+          }
+          if (Array.isArray(row.phase2_lands) && row.phase2_lands.length > 0) {
+            freshP2[row.team_name] = row.phase2_lands;
+          }
         }
       }
-      memoryTeamConquests = fresh;
+      memoryTeamConquests = freshOverall;
+      memoryPhase1Conquests = freshP1;
+      memoryPhase2Conquests = freshP2;
       conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
-      console.log(`[Conquests] Loaded ${Object.keys(fresh).length} team conquest mappings from DB.`);
+      console.log(`[Conquests] Loaded conquest mappings from DB. Active results phase: ${memoryActiveResultsPhase}`);
     }
   } catch (err) {
     console.error("[Conquests Load Exception]:", err.message);
@@ -800,66 +821,124 @@ async function loadTeamConquestsFromDB() {
 }
 
 async function getTeamConquests() {
-  if (Date.now() < conquestsCacheExpiresAt) return memoryTeamConquests;
+  if (Date.now() < conquestsCacheExpiresAt) {
+    return {
+      activeResultsPhase: memoryActiveResultsPhase,
+      conquests: memoryTeamConquests,
+      phase1Conquests: memoryPhase1Conquests,
+      phase2Conquests: memoryPhase2Conquests,
+    };
+  }
   await loadTeamConquestsFromDB();
-  return memoryTeamConquests;
+  return {
+    activeResultsPhase: memoryActiveResultsPhase,
+    conquests: memoryTeamConquests,
+    phase1Conquests: memoryPhase1Conquests,
+    phase2Conquests: memoryPhase2Conquests,
+  };
 }
 
-async function saveTeamConquest(teamName, conqueredLands) {
-  // Update RAM immediately
-  memoryTeamConquests[teamName] = conqueredLands;
+async function saveTeamConquest(teamName, phase, conqueredLands) {
+  const targetPhase = phase === "phase2" ? "phase2" : "phase1";
+
+  if (targetPhase === "phase2") {
+    memoryPhase2Conquests[teamName] = conqueredLands;
+  } else {
+    memoryPhase1Conquests[teamName] = conqueredLands;
+  }
+
+  // Combine phase 1 & phase 2 lands into overall team lands
+  const p1 = memoryPhase1Conquests[teamName] || [];
+  const p2 = memoryPhase2Conquests[teamName] || [];
+  const combined = Array.from(new Set([...p1, ...p2]));
+  memoryTeamConquests[teamName] = combined;
   conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
 
-  // Persist to Supabase teams.conquered_land column
+  // Persist to Supabase
   if (supabase) {
+    const updateObj = {
+      conquered_land: combined,
+      total_lands: combined.length,
+    };
+
     const { error } = await supabase
       .from("teams")
-      .update({
-        conquered_land: conqueredLands,
-        total_lands: conqueredLands.length,
-      })
+      .update(updateObj)
       .eq("team_name", teamName);
 
     if (error) {
       console.error(`[Supabase Conquests Save Error] team="${teamName}":`, error.message);
-      // Non-fatal: RAM is already updated, return the in-memory value
     } else {
-      console.log(`[${new Date().toISOString()}] 🏆 Persisted ${conqueredLands.length} lands for "${teamName}" to Supabase.`);
+      console.log(`[${new Date().toISOString()}] 🏆 Persisted ${conqueredLands.length} lands for "${teamName}" (${targetPhase}) to Supabase.`);
     }
   }
 }
 
-// Public API: Get live team conquered land mappings (cache-backed)
+// Public API: Get live team conquered land mappings & active results phase
 app.get(["/results/conquests", "/api/results/conquests", "/api/teams/conquered-lands"], async (_req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-  const conquests = await getTeamConquests();
+  const data = await getTeamConquests();
   return res.json({
     success: true,
-    conquests,
+    activeResultsPhase: data.activeResultsPhase,
+    conquests: data.conquests,
+    phase1Conquests: data.phase1Conquests,
+    phase2Conquests: data.phase2Conquests,
     timestamp: new Date().toISOString(),
   });
 });
 
-// Admin API: Update team conquered lands and persist to Supabase
+// Admin API: Set active results phase visibility (phase1 | phase2 | all)
+app.all(["/admin/results/active-phase", "/api/admin/results/active-phase"], requireAdmin, async (req, res) => {
+  if (req.method !== "PATCH" && req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
+  }
+
+  const { activeResultsPhase } = req.body;
+  if (!["phase1", "phase2", "all"].includes(activeResultsPhase)) {
+    return res.status(400).json({ success: false, message: "Invalid activeResultsPhase. Must be 'phase1', 'phase2', or 'all'." });
+  }
+
+  memoryActiveResultsPhase = activeResultsPhase;
+  conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
+
+  if (supabase) {
+    await supabase
+      .from("contest_state")
+      .upsert({ id: "current", active_stage: memoryActiveStage, disabled_lands: memoryDisabledLands, bypass_login: memoryBypassLogin, active_results_phase: activeResultsPhase, updated_at: new Date().toISOString() }, { onConflict: "id" })
+      .catch((err) => console.error("[Supabase Save Active Results Phase Error]:", err.message));
+  }
+
+  console.log(`[${new Date().toISOString()}] 🏆 ADMIN SET ACTIVE RESULTS PHASE TO: "${activeResultsPhase}" (by ${req.adminUser})`);
+  return res.json({
+    success: true,
+    activeResultsPhase: memoryActiveResultsPhase,
+    message: `Active results phase updated to "${activeResultsPhase}".`,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Admin API: Update team conquered lands for a specific phase
 app.all(["/admin/teams/conquered-lands", "/api/admin/teams/conquered-lands"], requireAdmin, async (req, res) => {
   if (req.method !== "PATCH" && req.method !== "POST") {
     return res.status(405).json({ success: false, message: "Method not allowed. Use PATCH or POST." });
   }
 
-  const { teamName, conqueredLands } = req.body;
+  const { teamName, phase, conqueredLands } = req.body;
 
   if (!teamName || !Array.isArray(conqueredLands)) {
     return res.status(400).json({ success: false, message: "teamName (string) and conqueredLands (array) are required." });
   }
 
   try {
-    await saveTeamConquest(teamName, conqueredLands);
-    console.log(`[${new Date().toISOString()}] 🏆 ADMIN SET "${teamName}" → [${conqueredLands.join(", ")}] (by ${req.adminUser})`);
+    await saveTeamConquest(teamName, phase || "phase1", conqueredLands);
+    console.log(`[${new Date().toISOString()}] 🏆 ADMIN SET "${teamName}" (${phase || "phase1"}) → [${conqueredLands.join(", ")}] (by ${req.adminUser})`);
     return res.json({
       success: true,
       teamName,
+      phase: phase || "phase1",
       conqueredLands,
-      message: `Conquered lands for "${teamName}" saved successfully.`,
+      message: `Conquered lands for "${teamName}" (${phase || "phase1"}) saved successfully.`,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
@@ -867,6 +946,7 @@ app.all(["/admin/teams/conquered-lands", "/api/admin/teams/conquered-lands"], re
     return res.status(500).json({ success: false, message: "Failed to save team conquered lands." });
   }
 });
+
 
 
 // ═══════════════════════════════════════════════════════════════

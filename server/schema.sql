@@ -45,9 +45,14 @@ CREATE TABLE IF NOT EXISTS public.contest_state (
 -- Migration helper if table already exists
 ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS disabled_lands JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS bypass_login BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.contest_state ADD COLUMN IF NOT EXISTS active_results_phase TEXT DEFAULT 'phase1';
+
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS phase1_lands JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS phase2_lands JSONB DEFAULT '[]'::jsonb;
 
 -- 6. Enable Row Level Security (RLS) on contest_state
 ALTER TABLE public.contest_state ENABLE ROW LEVEL SECURITY;
+
 
 -- 7. Policy: Allow backend server full access to contest_state
 DROP POLICY IF EXISTS "Service role access on contest_state" ON public.contest_state;
