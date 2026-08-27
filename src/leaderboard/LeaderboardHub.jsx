@@ -266,14 +266,19 @@ export default function LeaderboardHub() {
         return 999;
     };
 
+    // Index map for preserving initial seed order when lands & tie-ranks are equal
+    const initialIndexMap = new Map();
+    (current.data || []).forEach((t, i) => initialIndexMap.set(t.teamName, i));
+
     // For Phase 1 / Phase 2 tabs — sorted table view
     const activeEntries = (current.data || []).map(entry => {
         const targetMap = activeTab === "phase1" ? phase1Conquests :
                           activeTab === "phase2" ? phase2Conquests : phase3Conquests;
         const isEliminated = eliminatedTeams.includes(entry.teamName);
-        const conqueredLands = targetMap && targetMap[entry.teamName]
-            ? targetMap[entry.teamName]
-            : (entry.conqueredLands || []);
+        // Use ONLY DB data — empty array if team has no lands saved yet. Never fall back to static data.
+        const conqueredLands = (targetMap && targetMap[entry.teamName] != null)
+            ? (Array.isArray(targetMap[entry.teamName]) ? targetMap[entry.teamName] : [])
+            : [];
         return { ...entry, conqueredLands, isEliminated };
     }).sort((a, b) => {
         if (a.isEliminated && !b.isEliminated) return 1;
@@ -289,13 +294,20 @@ export default function LeaderboardHub() {
         const bTieRank = getTieRank(phaseKey, b.teamName);
         if (aTieRank !== bTieRank) return aTieRank - bTieRank;
 
-        return a.teamName.localeCompare(b.teamName);
+        // 3. Preserve seed ranking order
+        return (initialIndexMap.get(a.teamName) ?? 0) - (initialIndexMap.get(b.teamName) ?? 0);
     });
+
+    const finalWinnersIndexMap = new Map();
+    phase3Data.forEach((t, i) => finalWinnersIndexMap.set(t.teamName, i));
 
     // For Final Winners tab — top-5 from phase3 data
     const finalWinnersEntries = phase3Data.map(entry => {
         const isEliminated = eliminatedTeams.includes(entry.teamName);
-        const conqueredLands = phase3Conquests[entry.teamName] || entry.conqueredLands || [];
+        // Use ONLY DB data — never fall back to static conqueredLands
+        const conqueredLands = (phase3Conquests && phase3Conquests[entry.teamName] != null)
+            ? (Array.isArray(phase3Conquests[entry.teamName]) ? phase3Conquests[entry.teamName] : [])
+            : [];
         return { ...entry, conqueredLands, isEliminated };
     }).sort((a, b) => {
         if (a.isEliminated && !b.isEliminated) return 1;
@@ -310,7 +322,8 @@ export default function LeaderboardHub() {
         const bTieRank = getTieRank("phase3", b.teamName);
         if (aTieRank !== bTieRank) return aTieRank - bTieRank;
 
-        return a.teamName.localeCompare(b.teamName);
+        // 3. Preserve seed ranking order
+        return (finalWinnersIndexMap.get(a.teamName) ?? 0) - (finalWinnersIndexMap.get(b.teamName) ?? 0);
     });
 
 

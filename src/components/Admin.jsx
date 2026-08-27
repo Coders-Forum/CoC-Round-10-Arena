@@ -48,7 +48,7 @@ export default function Admin() {
   const [selectedPhaseForEditing, setSelectedPhaseForEditing] = useState("phase1");
   const [phase1Map, setPhase1Map] = useState(() => {
     const init = {};
-    phase1Data.forEach(t => { init[t.teamName] = t.conqueredLands || []; });
+    phase1Data.forEach(t => { init[t.teamName] = []; }); // Start empty — DB is the source of truth
     return init;
   });
   const [phase2Map, setPhase2Map] = useState(() => {
@@ -264,15 +264,33 @@ export default function Admin() {
         if (data.activeResultsPhase) setActiveResultsPhase(data.activeResultsPhase);
         if (Array.isArray(data.eliminatedTeams)) setEliminatedTeams(data.eliminatedTeams);
         if (data.manualRanks) setManualRanks(data.manualRanks);
-        if (data.phase1Conquests && Object.keys(data.phase1Conquests).length > 0) {
-          setPhase1Map(prev => ({ ...prev, ...data.phase1Conquests }));
+
+        // Always fully replace phase maps from DB — never merge with stale local defaults.
+        // Build a full map with ALL team names initialized to [] first, then overlay DB values.
+        const allTeamNames = phase1Data.map(t => t.teamName);
+
+        const freshP1 = {};
+        const freshP2 = {};
+        const freshP3 = {};
+        allTeamNames.forEach(name => {
+          freshP1[name] = [];
+          freshP2[name] = [];
+          freshP3[name] = [];
+        });
+
+        if (data.phase1Conquests) {
+          Object.entries(data.phase1Conquests).forEach(([k, v]) => { freshP1[k] = Array.isArray(v) ? v : []; });
         }
-        if (data.phase2Conquests && Object.keys(data.phase2Conquests).length > 0) {
-          setPhase2Map(prev => ({ ...prev, ...data.phase2Conquests }));
+        if (data.phase2Conquests) {
+          Object.entries(data.phase2Conquests).forEach(([k, v]) => { freshP2[k] = Array.isArray(v) ? v : []; });
         }
-        if (data.phase3Conquests && Object.keys(data.phase3Conquests).length > 0) {
-          setPhase3Map(prev => ({ ...prev, ...data.phase3Conquests }));
+        if (data.phase3Conquests) {
+          Object.entries(data.phase3Conquests).forEach(([k, v]) => { freshP3[k] = Array.isArray(v) ? v : []; });
         }
+
+        setPhase1Map(freshP1);
+        setPhase2Map(freshP2);
+        setPhase3Map(freshP3);
       }
     } catch (err) {
       console.error("Failed to fetch conquests:", err);
@@ -314,6 +332,7 @@ export default function Admin() {
       if (res.ok && data.success) {
         setStatusMsg("⚖️ Successfully saved tie-breaker / manual rank positions!");
         setStatusType("success");
+        fetchConquests();
       } else {
         setStatusMsg(data.message || "Failed to save tie-breaker positions.");
         setStatusType("error");
@@ -369,6 +388,7 @@ export default function Admin() {
       if (res.ok && data.success) {
         setStatusMsg(`❌ Successfully saved eliminations! (${eliminatedTeams.length} teams eliminated).`);
         setStatusType("success");
+        fetchConquests();
       } else {
         setStatusMsg(data.message || "Failed to save team eliminations.");
         setStatusType("error");
@@ -409,6 +429,7 @@ export default function Admin() {
         };
         setStatusMsg(`🏆 Public Results visibility mode set to: ${labelMap[targetPhase] || targetPhase}`);
         setStatusType("success");
+        fetchConquests();
       } else {
         setStatusMsg(data.message || "Failed to update results visibility mode.");
         setStatusType("error");
@@ -461,6 +482,7 @@ export default function Admin() {
       if (res.ok && data.success) {
         setStatusMsg(`🏆 Saved ${selectedPhaseForEditing.toUpperCase()} conquered lands for team "${selectedTeamForResults}"! (${currentLands.length} lands)`);
         setStatusType("success");
+        fetchConquests();
       } else {
         setStatusMsg(data.message || "Failed to save team conquests.");
         setStatusType("error");

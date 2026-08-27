@@ -847,10 +847,20 @@ async function loadTeamConquestsFromDB() {
       }
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("teams")
       .select("team_name, conquered_land, phase1_lands, phase2_lands, phase3_lands")
       .eq("status", "active");
+
+    if (error) {
+      // Fallback query if phase columns are missing
+      const fallback = await supabase
+        .from("teams")
+        .select("team_name, conquered_land")
+        .eq("status", "active");
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (!error && Array.isArray(data)) {
       const freshOverall = {};
@@ -860,25 +870,16 @@ async function loadTeamConquestsFromDB() {
 
       for (const row of data) {
         if (row.team_name) {
-          if (Array.isArray(row.conquered_land) && row.conquered_land.length > 0) {
-            freshOverall[row.team_name] = row.conquered_land;
-          }
-          if (Array.isArray(row.phase1_lands) && row.phase1_lands.length > 0) {
-            freshP1[row.team_name] = row.phase1_lands;
-          }
-          if (Array.isArray(row.phase2_lands) && row.phase2_lands.length > 0) {
-            freshP2[row.team_name] = row.phase2_lands;
-          }
-          if (Array.isArray(row.phase3_lands) && row.phase3_lands.length > 0) {
-            freshP3[row.team_name] = row.phase3_lands;
-          }
+          freshOverall[row.team_name] = Array.isArray(row.conquered_land) ? row.conquered_land : [];
+          freshP1[row.team_name] = Array.isArray(row.phase1_lands) ? row.phase1_lands : [];
+          freshP2[row.team_name] = Array.isArray(row.phase2_lands) ? row.phase2_lands : [];
+          freshP3[row.team_name] = Array.isArray(row.phase3_lands) ? row.phase3_lands : [];
         }
       }
       memoryTeamConquests = freshOverall;
       memoryPhase1Conquests = freshP1;
       memoryPhase2Conquests = freshP2;
       memoryPhase3Conquests = freshP3;
-      conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
       console.log(`[Conquests] Loaded conquest mappings from DB. Active results phase: ${memoryActiveResultsPhase}, Eliminated teams: ${memoryEliminatedTeams.length}`);
     }
   } catch (err) {
@@ -887,17 +888,6 @@ async function loadTeamConquestsFromDB() {
 }
 
 async function getTeamConquests() {
-  if (Date.now() < conquestsCacheExpiresAt) {
-    return {
-      activeResultsPhase: memoryActiveResultsPhase,
-      conquests: memoryTeamConquests,
-      phase1Conquests: memoryPhase1Conquests,
-      phase2Conquests: memoryPhase2Conquests,
-      phase3Conquests: memoryPhase3Conquests,
-      manualRanks: memoryManualRanks,
-      eliminatedTeams: memoryEliminatedTeams,
-    };
-  }
   await loadTeamConquestsFromDB();
   return {
     activeResultsPhase: memoryActiveResultsPhase,
@@ -912,13 +902,14 @@ async function getTeamConquests() {
 
 async function saveTeamConquest(teamName, phase, conqueredLands) {
   const targetPhase = phase === "phase3" ? "phase3" : phase === "phase2" ? "phase2" : "phase1";
+  const cleanLands = Array.isArray(conqueredLands) ? conqueredLands : [];
 
   if (targetPhase === "phase3") {
-    memoryPhase3Conquests[teamName] = conqueredLands;
+    memoryPhase3Conquests[teamName] = cleanLands;
   } else if (targetPhase === "phase2") {
-    memoryPhase2Conquests[teamName] = conqueredLands;
+    memoryPhase2Conquests[teamName] = cleanLands;
   } else {
-    memoryPhase1Conquests[teamName] = conqueredLands;
+    memoryPhase1Conquests[teamName] = cleanLands;
   }
 
   // Combine phase 1, phase 2 & phase 3 lands into overall team lands
@@ -927,7 +918,6 @@ async function saveTeamConquest(teamName, phase, conqueredLands) {
   const p3 = memoryPhase3Conquests[teamName] || [];
   const combined = Array.from(new Set([...p1, ...p2, ...p3]));
   memoryTeamConquests[teamName] = combined;
-  conquestsCacheExpiresAt = Date.now() + CONQUESTS_CACHE_TTL;
 
   // Persist to Supabase
   if (supabase) {
@@ -935,19 +925,28 @@ async function saveTeamConquest(teamName, phase, conqueredLands) {
       conquered_land: combined,
       total_lands: combined.length,
     };
-    if (targetPhase === "phase1") updateObj.phase1_lands = conqueredLands;
-    if (targetPhase === "phase2") updateObj.phase2_lands = conqueredLands;
-    if (targetPhase === "phase3") updateObj.phase3_lands = conqueredLands;
+    if (targetPhase === "phase1") updateObj.phase1_lands = cleanLands;
+    if (targetPhase === "phase2") updateObj.phase2_lands = cleanLands;
+    if (targetPhase === "phase3") updateObj.phase3_lands = cleanLands;
 
-    const { error } = await supabase
-      .from("teams")
-      .update(updateObj)
-      .eq("team_name", teamName);
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update(updateObj)
+        .ilike("team_name", teamName.trim());
 
-    if (error) {
-      console.error(`[Supabase Conquests Save Error] team="${teamName}":`, error.message);
-    } else {
-      console.log(`[${new Date().toISOString()}] 🏆 Persisted ${conqueredLands.length} lands for "${teamName}" (${targetPhase}) to Supabase.`);
+      if (error) {
+        console.error(`[Supabase Conquests Save Error] team="${teamName}":`, error.message);
+        // Retry with just conquered_land if phase column is missing
+        await supabase
+          .from("teams")
+          .update({ conquered_land: combined, total_lands: combined.length })
+          .ilike("team_name", teamName.trim());
+      } else {
+        console.log(`[${new Date().toISOString()}] 🏆 Persisted ${cleanLands.length} lands for "${teamName}" (${targetPhase}) to Supabase.`);
+      }
+    } catch (err) {
+      console.error("[Supabase Conquests Save Exception]:", err.message);
     }
   }
 }
